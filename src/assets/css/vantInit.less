@@ -1,0 +1,110 @@
+.pay-dialog {
+    background: var(--app-surface-strong)!important;
+    border: 1px solid var(--app-border) !important;
+    border-radius: 24px !important;
+
+    .van-dialog__header {
+        color: var(--app-text) !important;
+    }
+
+    .van-dialog__message {
+        color: var(--app-text-secondary) !important;
+    }
+
+    .van-button--default {
+        background: var(--app-surface-input) !important;
+    }
+}
+
+// 导航栏
+.van-nav-bar {
+    background: linear-gradient(180deg, rgba(5, 7, 12, 0.90) 0%, rgba(5, 7, 12, 0.56) 100%) !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+
+    &::after {
+        display: none !important;
+    }
+
+    .van-nav-bar__title {
+        color: var(--app-text) !important;
+    }
+
+    .van-icon {
+        color: var(--app-text) !important;
+    }
+}
+
+// 遮罩层
+.van-overlay {
+    background: rgba(1, 4, 12, 0.58) !important;
+    backdrop-filter: blur(8px) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+}
+
+// 弹出层
+.van-popup {
+    background: transparent !important;
+
+    .van-action-sheet__gap {
+        background: var(--app-bg) !important;
+    }
+
+    .van-action-sheet__cancel,
+    .van-action-sheet__item {
+        background: var(--app-surface-strong)!important;
+		backdrop-filter: blur(20px)!important;
+		-webkit-backdrop-filter: blur(20px)!important;
+        color: var(--app-text) !important;
+    }
+}
+
+// dialog弹窗
+.van-dialog {
+    background: var(--app-surface-strong)!important;
+	border: 1px solid var(--app-border) !important;
+	border-radius: 24px !important;
+	backdrop-filter: blur(20px)!important;
+	-webkit-backdrop-filter: blur(20px)!important;
+    color: var(--app-text);
+
+    .van-button--default {
+        background: var(--app-surface-input)!important;
+		backdrop-filter: blur(20px)!important;
+		-webkit-backdrop-filter: blur(20px)!important;
+        color: var(--app-text-muted) !important;
+    }
+
+    .van-dialog__confirm {
+        color: var(--app-primary-light) !important;
+    }
+
+    .van-dialog__message {
+        color: var(--app-text) !important;
+    }
+
+}
+
+.van-button--primary {
+    background: var(--app-primary) !important;
+    border-color: var(--app-primary) !important;
+    color: var(--app-text) !important;
+}
+
+.van-button--default {
+    background: var(--app-surface-input) !important;
+    border-color: var(--app-border) !important;
+    color: var(--app-text) !important;
+}
+
+.van-toast {
+    background: rgba(10, 18, 36, 0.94) !important;
+    border: 1px solid var(--app-border) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+}
+
+.van-toast__text,
+.van-loading__text {
+    color: var(--app-text) !important;
+}
