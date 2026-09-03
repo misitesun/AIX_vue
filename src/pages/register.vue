@@ -1,5 +1,6 @@
 <template>
     <div class="register-page">
+        <div class="register-stage">
         <!-- 模块一：复用邮箱登录页同源的 Figma 高清背景与品牌蒙版。 -->
         <img src="@img/email-login-bg.png" alt="" class="register-background" />
         <div class="register-brand" aria-label="AIX-Quant">
@@ -99,7 +100,7 @@
                     @click="showPayPassword = !showPayPassword"
                 >
                     <img
-                        :src="showPayPassword ? eyeVisible : eyeHidden"
+                        :src="showPayPassword ? eyeHidden : eyeVisible"
                         alt=""
                     />
                 </button>
@@ -128,6 +129,7 @@
         <div class="register-login-link">
             <span>{{ $t('已有账号？') }}</span>
             <button type="button" @click="goEmailLogin">{{ $t('前往登录') }}</button>
+        </div>
         </div>
     </div>
 </template>
@@ -197,10 +199,8 @@ export default {
                     this.startCodeCountdown()
                     return
                 }
-                this.$toast(this.$t('发送验证码失败'))
             } catch (err) {
                 console.log('发送注册验证码失败', err)
-                this.$toast(this.$t('发送验证码失败'))
             } finally {
                 this.isSendingCode = false
             }
@@ -251,18 +251,22 @@ export default {
                     }
                     return
                 }
-                this.$toast(this.$t('注册失败'))
             } catch (err) {
                 console.log('邮箱注册失败', err)
-                this.$toast(this.$t('注册失败'))
             } finally {
                 this.isSubmitting = false
             }
         },
         goEmailLogin() {
+            const query = {}
+            if (this.form.inviteCode) query.ref = this.form.inviteCode
+            const redirect = String(this.$route.query.redirect || '')
+            if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+                query.redirect = redirect
+            }
             this.$router.replace({
-                path: '/',
-                query: this.form.inviteCode ? { ref: this.form.inviteCode } : {},
+                name: 'login',
+                query,
             })
         },
     },
@@ -273,12 +277,22 @@ export default {
 .register-page {
     position: relative;
     width: 750px;
-    height: 1624px;
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     margin: 0 auto;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     background: #000308;
     color: #FFFFFF;
+
+    .register-stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 1624px;
+    }
 
     button {
         margin: 0;

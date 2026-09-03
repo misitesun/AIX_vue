@@ -21,19 +21,19 @@
         <div class="slide-menu">
             <div class="menu-content" :class="{ 'menu-show': isShow }">
                 <div class="pt-100">
-                    <div class="fsz-28 fw-b pl-30">邀请链接</div>
+                    <div class="fsz-28 fw-b pl-30">{{ $t('邀请链接') }}</div>
                     <div class="df-aic-jusb link" @click="copyCode">
                         <div class="fsz-24 text-line-1">{{ inviteUrl }}</div>
                         <img src="@common/copy.png" alt="" class="img-32">
                     </div>
                 </div>
-                <div class="fsz-28 fw-b pl-30">服务</div>
+                <div class="fsz-28 fw-b pl-30">{{ $t('服务') }}</div>
                 <div class="menu-list">
                     <div class="menu-item df-aic-jusb" @click="$go(2,'/index')">
                         <div class="df-aic">
                             <img src="@common/nav1-ac.png" alt="" class="img-40" v-if="url == 'index'">
                             <img src="@common/nav1.png" alt="" class="img-40" v-else>
-                            <span class="fsz-28 fw-b ml-10" :class="{'color-yellow': url == 'index'}">首页「入单」</span>
+                            <span class="fsz-28 fw-b ml-10" :class="{'color-yellow': url == 'index'}">{{ $t('首页「入单」') }}</span>
                         </div>
                         <img src="@common/nav-arrow.png" alt="" class="img-20 ml-20">
                     </div>
@@ -41,7 +41,7 @@
                         <div class="df-aic">
                             <img src="@common/nav2-ac.png" alt="" class="img-40" v-if="url == 'team'">
                             <img src="@common/nav2.png" alt="" class="img-40" v-else>
-                            <span class="fsz-28 fw-b ml-10" :class="{'color-yellow': url == 'team'}">社区</span>
+                            <span class="fsz-28 fw-b ml-10" :class="{'color-yellow': url == 'team'}">{{ $t('社区') }}</span>
                         </div>
                         <img src="@common/nav-arrow.png" alt="" class="img-20 ml-20">
                     </div>
@@ -57,7 +57,7 @@
                         <div class="df-aic">
                             <img src="@common/nav4-ac.png" alt="" class="img-40" v-if="url == 'record'">
                             <img src="@common/nav4.png" alt="" class="img-40" v-else>
-                            <span class="fsz-28 fw-b ml-10" :class="{'color-yellow': url == 'record'}">捐赠记录</span>
+                            <span class="fsz-28 fw-b ml-10" :class="{'color-yellow': url == 'record'}">{{ $t('捐赠记录') }}</span>
                         </div>
                         <img src="@common/nav-arrow.png" alt="" class="img-20 ml-20">
                     </div>
@@ -65,7 +65,7 @@
                         <div class="df-aic">
                             <img src="@common/nav4-ac.png" alt="" class="img-40" v-if="url == 'assersRecord'">
                             <img src="@common/nav4.png" alt="" class="img-40" v-else>
-                            <span class="fsz-28 fw-b ml-10" :class="{'color-yellow': url == 'assersRecord'}">资产记录</span>
+                            <span class="fsz-28 fw-b ml-10" :class="{'color-yellow': url == 'assersRecord'}">{{ $t('资产记录') }}</span>
                         </div>
                     </div>
                     
@@ -99,7 +99,7 @@ export default {
                 code: 'zh-Hans'
                 }, 
                 {
-                    name: '繁体中文',
+                    name: '繁體中文',
                     code: 'zh-Hant'
                 },
                 {
@@ -114,6 +114,22 @@ export default {
                     name: '한국어',
                     code: 'ko'
                 },
+                {
+                    name: 'Tiếng Việt',
+                    code: 'vi'
+                },
+                {
+                    name: 'Bahasa Melayu',
+                    code: 'ms'
+                },
+                {
+                    name: 'မြန်မာ',
+                    code: 'my'
+                },
+                {
+                    name: 'Русский',
+                    code: 'ru'
+                },
             ],
             inviteUrl: '',
             isShow: false,
@@ -121,7 +137,7 @@ export default {
         }
     },
     async mounted() {
-        this.lang = localStorage.getItem('lang') || 'cn';
+        this.lang = localStorage.getItem('lang') || this.$i18n.locale;
         if (typeof window.ethereum !== "undefined") {
             if (this.url !== 'login') {
                 await this.getWeb3Init()

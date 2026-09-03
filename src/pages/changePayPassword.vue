@@ -1,8 +1,8 @@
 <template>
-    <div class="change-login-password-page">
+    <div class="change-pay-password-page">
         <!-- 公共模块：设置子页统一使用固定顶部导航。 -->
         <van-nav-bar
-            :title="$t('修改登录密码')"
+            :title="$t('修改支付密码')"
             :fixed="true"
             :placeholder="true"
             :border="false"
@@ -10,19 +10,19 @@
             @click-left="$go(1, 1)"
         >
             <template #left>
-                <span class="change-login-password-back df-aic-jucen">
+                <span class="change-pay-password-back df-aic-jucen">
                     <van-icon name="arrow-left" size="20" color="#fff" />
                 </span>
             </template>
         </van-nav-bar>
 
-        <main class="change-login-password-content">
-            <!-- 模块一：通过绑定邮箱验证后重置登录密码。 -->
-            <section class="change-login-password-card">
-                <h1>{{ $t('登录密码') }}</h1>
+        <main class="change-pay-password-content">
+            <!-- 模块一：通过账号绑定邮箱验证后修改六位支付密码。 -->
+            <section class="change-pay-password-card">
+                <h1>{{ $t('支付密码') }}</h1>
 
-                <form class="change-login-password-form" @submit.prevent="submitChangePassword">
-                    <label class="change-login-password-field common-input-focus">
+                <form class="change-pay-password-form" @submit.prevent="submitChangePassword">
+                    <label class="change-pay-password-field common-input-focus">
                         <img src="@img/email-login-mail.svg" alt="" />
                         <input
                             v-model.trim="form.email"
@@ -33,10 +33,10 @@
                         />
                     </label>
 
-                    <div class="change-login-password-field change-login-password-code common-input-focus">
+                    <div class="change-pay-password-field change-pay-password-code common-input-focus">
                         <img src="@img/register-code.svg" alt="" />
                         <input
-                            v-model.trim="form.code"
+                            v-model="form.code"
                             type="text"
                             inputmode="numeric"
                             autocomplete="one-time-code"
@@ -54,19 +54,22 @@
                         </button>
                     </div>
 
-                    <div class="change-login-password-field common-input-focus">
+                    <div class="change-pay-password-field common-input-focus">
                         <img src="@img/email-login-lock.svg" alt="" />
                         <input
                             v-model="form.newPassword"
                             :type="showNewPassword ? 'text' : 'password'"
+                            inputmode="numeric"
                             autocomplete="new-password"
-                            :placeholder="$t('新登录密码')"
-                            :aria-label="$t('新登录密码')"
+                            maxlength="6"
+                            :placeholder="$t('新支付密码')"
+                            :aria-label="$t('新支付密码')"
+                            @input="normalizeNewPassword"
                         />
                         <button
                             type="button"
-                            class="change-login-password-eye df-aic-jucen"
-                            :aria-label="$t('显示或隐藏新登录密码')"
+                            class="change-pay-password-eye df-aic-jucen"
+                            :aria-label="$t('显示或隐藏新支付密码')"
                             :aria-pressed="showNewPassword"
                             @click="showNewPassword = !showNewPassword"
                         >
@@ -74,18 +77,21 @@
                         </button>
                     </div>
 
-                    <div class="change-login-password-field common-input-focus">
+                    <div class="change-pay-password-field common-input-focus">
                         <img src="@img/email-login-lock.svg" alt="" />
                         <input
                             v-model="form.confirmPassword"
                             :type="showConfirmPassword ? 'text' : 'password'"
+                            inputmode="numeric"
                             autocomplete="new-password"
-                            :placeholder="$t('确认登录密码')"
-                            :aria-label="$t('确认登录密码')"
+                            maxlength="6"
+                            :placeholder="$t('确认支付密码')"
+                            :aria-label="$t('确认支付密码')"
+                            @input="normalizeConfirmPassword"
                         />
                         <button
                             type="button"
-                            class="change-login-password-eye df-aic-jucen"
+                            class="change-pay-password-eye df-aic-jucen"
                             :aria-label="$t('显示或隐藏确认密码')"
                             :aria-pressed="showConfirmPassword"
                             @click="showConfirmPassword = !showConfirmPassword"
@@ -94,8 +100,8 @@
                         </button>
                     </div>
 
-                    <button type="submit" class="change-login-password-submit" :disabled="isSubmitting">
-                        {{ $t('修改登录密码') }}
+                    <button type="submit" class="change-pay-password-submit" :disabled="isSubmitting">
+                        {{ $t('修改支付密码') }}
                     </button>
                 </form>
             </section>
@@ -108,7 +114,7 @@ import eyeVisible from '@img/register-eye-visible.svg'
 import eyeHidden from '@img/register-eye-hidden.svg'
 
 export default {
-    name: 'ChangeLoginPassword',
+    name: 'ChangePayPassword',
     data() {
         return {
             form: {
@@ -144,8 +150,8 @@ export default {
         async loadAccountEmail() {
             try {
                 const res = await this.$http.get('/api/users/my')
-                if (res.code == 200 && res.data && res.data.memail) {
-                    this.form.email = res.data.memail
+                if (res.code == 200 && res.data) {
+                    this.form.email = res.data.email || res.data.memail || ''
                 }
             } catch (error) {
                 console.log('获取当前账户邮箱失败', error)
@@ -155,7 +161,16 @@ export default {
             return /^\S+@\S+\.\S+$/.test(this.form.email)
         },
         normalizeCode(event) {
-            this.form.code = String(event.target.value || '').replace(/\D/g, '').slice(0, 6)
+            this.form.code = this.normalizeSixDigitValue(event.target.value)
+        },
+        normalizeNewPassword(event) {
+            this.form.newPassword = this.normalizeSixDigitValue(event.target.value)
+        },
+        normalizeConfirmPassword(event) {
+            this.form.confirmPassword = this.normalizeSixDigitValue(event.target.value)
+        },
+        normalizeSixDigitValue(value) {
+            return String(value || '').replace(/\D/g, '').slice(0, 6)
         },
         async sendVerificationCode() {
             if (this.isSendingCode || this.codeCountdown > 0) return
@@ -164,10 +179,9 @@ export default {
 
             this.isSendingCode = true
             try {
-                // 后端当前已提供的改密提交接口为 forget_password，因此验证码类型必须保持为 3。
                 const res = await this.$http.post('/api/email_code', {
                     email: this.form.email,
-                    type: 3,
+                    type: 4,
                 })
                 if (res.code == 200) {
                     this.$messageTip.success(this.$t('验证码已发送'))
@@ -175,7 +189,7 @@ export default {
                     return
                 }
             } catch (error) {
-                console.log('发送修改登录密码验证码失败', error)
+                console.log('发送修改支付密码验证码失败', error)
             } finally {
                 this.isSendingCode = false
             }
@@ -195,11 +209,10 @@ export default {
             if (!this.form.email) return this.showValidation('请输入邮箱')
             if (!this.isValidEmail()) return this.showValidation('请输入有效邮箱')
             if (!/^\d{6}$/.test(this.form.code)) return this.showValidation('请输入6位验证码')
-            if (!this.form.newPassword) return this.showValidation('请输入新登录密码')
-            if (this.form.newPassword.length < 6 || this.form.newPassword.length > 32) {
-                return this.showValidation('登录密码长度为6至32位')
+            if (!/^\d{6}$/.test(this.form.newPassword)) {
+                return this.showValidation('支付密码必须为6位数字')
             }
-            if (!this.form.confirmPassword) return this.showValidation('请确认登录密码')
+            if (!this.form.confirmPassword) return this.showValidation('请确认支付密码')
             if (this.form.newPassword !== this.form.confirmPassword) {
                 return this.showValidation('两次输入的密码不一致')
             }
@@ -214,34 +227,30 @@ export default {
 
             this.isSubmitting = true
             try {
-                const res = await this.$http.post('/api/auth/forget_password', {
-                    email: this.form.email,
-                    password: this.form.newPassword,
+                const res = await this.$http.post('/api/users/my/pay_password', {
                     email_code: this.form.code,
+                    pay_password: this.form.newPassword,
                 })
                 if (res.code == 200) {
-                    this.$messageTip.success(this.$t('登录密码修改成功'))
-                    this.clearLoginState()
-                    this.$router.replace({ name: 'login' })
+                    this.$messageTip.success(this.$t('支付密码修改成功'))
+                    this.form.code = ''
+                    this.form.newPassword = ''
+                    this.form.confirmPassword = ''
+                    this.$router.replace({ name: 'settings' })
                     return
                 }
             } catch (error) {
-                console.log('修改登录密码失败', error)
+                console.log('修改支付密码失败', error)
             } finally {
                 this.isSubmitting = false
             }
-        },
-        clearLoginState() {
-            this.$store.commit('setAddress', '')
-            localStorage.removeItem('token')
-            localStorage.removeItem('address')
         },
     },
 }
 </script>
 
 <style scoped lang="less">
-.change-login-password-page {
+.change-pay-password-page {
     position: relative;
     width: 750px;
     min-height: 100vh;
@@ -285,16 +294,16 @@ export default {
         }
     }
 
-    .change-login-password-back {
+    .change-pay-password-back {
         width: 48px;
         height: 48px;
     }
 
-    .change-login-password-content {
+    .change-pay-password-content {
         width: 750px;
         padding: 60px 30px 120px;
 
-        .change-login-password-card {
+        .change-pay-password-card {
             width: 690px;
             padding: 36px 30px 40px;
             border: 1px solid rgba(141, 194, 255, 0.26);
@@ -312,12 +321,12 @@ export default {
                 line-height: 45px;
             }
 
-            .change-login-password-form {
+            .change-pay-password-form {
                 display: flex;
                 flex-direction: column;
                 gap: 24px;
 
-                .change-login-password-field {
+                .change-pay-password-field {
                     display: flex;
                     width: 630px;
                     height: 96px;
@@ -347,7 +356,7 @@ export default {
                         }
                     }
 
-                    &.change-login-password-code {
+                    &.change-pay-password-code {
                         button {
                             height: 92px;
                             margin-left: 12px;
@@ -363,7 +372,7 @@ export default {
                         }
                     }
 
-                    .change-login-password-eye {
+                    .change-pay-password-eye {
                         width: 40px;
                         height: 92px;
                         margin-left: 8px;
@@ -377,7 +386,7 @@ export default {
                     }
                 }
 
-                .change-login-password-submit {
+                .change-pay-password-submit {
                     width: 630px;
                     height: 88px;
                     margin-top: 16px;

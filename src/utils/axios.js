@@ -2,6 +2,7 @@
 import router from "@/router/index"; //引入路由对象
 import messageTip from '@/utils/messageTip.js';
 import store from '@/store/index.js';
+import { translate } from '@/i18n/translate.js';
 // axios
 import axios from 'axios'
 import qs from "qs";
@@ -13,6 +14,62 @@ axios.defaults.headers['accept'] = '*/*'
 axios.defaults.headers['content-type'] = 'application/json'
 // 当前接口使用 Bearer Token 鉴权；关闭 Cookie 凭证以兼容后端 Access-Control-Allow-Origin: *。
 axios.defaults.withCredentials = false;
+
+let isUnauthorizedRedirecting = false
+
+function isPublicAuthRequest(config = {}) {
+    const url = String(config.url || '')
+    return Boolean(config.skipUnauthorizedRedirect)
+        || /^\/?api\/auth(?:\/|$)/.test(url)
+        || /^\/?api\/email_code(?:\/|$)/.test(url)
+}
+
+function clearLoginState() {
+    store.commit('setAddress', '')
+    localStorage.removeItem('token')
+    localStorage.removeItem('address')
+}
+
+function getUnauthorizedMessage(payload) {
+    if (typeof payload === 'string' && payload) return payload
+    if (payload && typeof payload === 'object') {
+        return payload.message || payload.msg || translate('登录过期，请重新登录')
+    }
+    return translate('登录过期，请重新登录')
+}
+
+function redirectToStartup() {
+    const currentRoute = router.currentRoute
+    const isPublicRoute = currentRoute
+        && currentRoute.matched
+        && currentRoute.matched.some(record => record.meta && record.meta.public)
+    if (!currentRoute || isPublicRoute || currentRoute.name === 'startup' || isUnauthorizedRedirecting) return
+
+    isUnauthorizedRedirecting = true
+    const redirect = currentRoute.fullPath && currentRoute.fullPath !== '/' ? currentRoute.fullPath : ''
+    const navigation = router.replace({
+        name: 'startup',
+        query: redirect ? { redirect } : {},
+    })
+    if (navigation && typeof navigation.catch === 'function') {
+        navigation.catch(() => {}).then(() => {
+            isUnauthorizedRedirecting = false
+        })
+        return
+    }
+    isUnauthorizedRedirecting = false
+}
+
+function handleUnauthorized(config, payload) {
+    // 登录、注册、验证码等公开接口不跳转登录页，但仍由全局统一展示接口错误。
+    if (isPublicAuthRequest(config)) {
+        messageTip.warning(getUnauthorizedMessage(payload))
+        return
+    }
+    clearLoginState()
+    messageTip.warning(getUnauthorizedMessage(payload))
+    redirectToStartup()
+}
 
 // axios请求拦截
 axios.interceptors.request.use(config => {
@@ -37,6 +94,11 @@ axios.interceptors.request.use(config => {
 axios.interceptors.response.use(
     response => {
         // 如果返回的状态码为200，说明接口请求成功，可以正常拿到数据，否则的话抛出错误
+        // 部分后端会以 HTTP 200 返回业务 code=401，此处同样按登录过期处理。
+        if (response.data && Number(response.data.code) === 401) {
+            handleUnauthorized(response.config, response.data)
+            return Promise.reject(response)
+        }
         // messageTip.warning('提示内容');
         if (response.status === 200) {
             let data = {
@@ -55,20 +117,8 @@ axios.interceptors.response.use(
         const status = error && error.response ? error.response.status : null
         if (status) {
             switch (status) {
-                // 404请求不存在
                 case 401:
-                    store.commit("setAddress", '');
-                    localStorage.removeItem('token')
-                    localStorage.removeItem('address')
-                    messageTip.warning(error.response.data);
-                    setTimeout(() => {
-                        router.replace({
-                            path: '/',
-                            // query: {
-                            // 	redirect: router.currentRoute.fullPath
-                            // }
-                        });
-                    }, 500)
+                    handleUnauthorized(error.config, error.response.data)
                     break;
                 case 500:
                     messageTip.warning(error.response.data + ' ' + status);
@@ -103,28 +153,14 @@ export function get(url, params = {}) {
                     data: res.data
                 })
             } else if (res.code == 401) {
-                store.commit("setAddress", '');
-                localStorage.removeItem('token')
-                localStorage.removeItem('address')
-                messageTip.warning('登录过期，请重新登录');
+                handleUnauthorized({ url }, res.data)
                 resolve({
                     code: 401,
                     data: res.data,
                 })
-                setTimeout(() => {
-                    router.replace({
-                        path: '/',
-                        query: {
-                            redirect: router.currentRoute.fullPath
-                        }
-                    });
-                }, 500)
             } else {
                 // 其他错误
-                messageTip.warning({
-                    message: '其他错误',
-                    className: 'toast-className'
-                });
+                messageTip.warning(translate('其他错误'));
                 resolve({
                     code: 0,
                     data: res.data,
@@ -151,25 +187,14 @@ export function post(url, params = {}, config = {}) {
                     data: res.data
                 })
             } else if (res.code == 401) {
-                messageTip.warning('登录过期，请重新登录');
+                handleUnauthorized({ ...config, url }, res.data)
                 resolve({
                     code: 401,
                     data: res.data,
                 })
-                setTimeout(() => {
-                    router.replace({
-                        path: '/',
-                        query: {
-                            redirect: router.currentRoute.fullPath
-                        }
-                    });
-                }, 500)
             } else {
                 // 其他错误
-                messageTip.warning({
-                    message: '其他错误',
-                    className: 'toast-className'
-                });
+                messageTip.warning(translate('其他错误'));
                 resolve({
                     code: 0,
                     data: res.data,

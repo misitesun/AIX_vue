@@ -10,7 +10,6 @@
 </template>
 
 <script>
-    import Toast from 'vant/lib/toast';
 	import {
 		ethers
 	} from "ethers";
@@ -35,7 +34,7 @@
             this.$store.commit("setAddress", '');
 			this.initReferrer();
 			if (typeof window.ethereum === "undefined") {
-				this.$toast('请先安装MetaMask')
+				this.$toast(this.$t('请先安装 MetaMask'))
 				return;
 			}
 			await this.initializeLogin();
@@ -71,7 +70,7 @@
                     await this.getLogin();
                 } catch (err) {
                     console.log('初始化登录失败', err)
-                    this.handleLoginError(err, '钱包连接失败')
+                    this.$toast(this.$t('钱包连接失败'))
                 } finally {
                     this.isInitializing = false;
                 }
@@ -115,6 +114,11 @@
                 }
             },
 
+            getSafeRedirect() {
+                const redirect = String(this.$route.query.redirect || '')
+                if (!redirect || !redirect.startsWith('/') || redirect.startsWith('//')) return ''
+                return redirect
+            },
 			async getLogin() {
                 if (this.isLoggingIn) {
                     return;
@@ -134,11 +138,10 @@
                     })
                     if (res.code == 200 && res.data && res.data.token) {
                         localStorage.setItem('token', res.data.token)
-                        this.$store.commit("setAddress", this.address);
-                        this.$go(2, '/index?ref=' + this.ref);
+                        this.$store.commit("setAddress", this.address)
+                        this.$router.replace(this.getSafeRedirect() || { name: 'index' })
                         return;
                     }
-                    this.$toast(this.$t('登录失败'))
                 } catch (err) {
                     console.log('钱包登录失败', err)
                 } finally {

@@ -2,7 +2,7 @@
     <div class="google-authenticator-page">
         <!-- 公共模块：固定顶部导航，按项目规范去除设计稿中的系统状态栏。 -->
         <van-nav-bar
-            :title="$t(isDisableMode ? '谷歌验证器' : '谷歌验证码')"
+            :title="$t('谷歌验证码')"
             :fixed="true"
             :placeholder="true"
             :border="false"
@@ -16,35 +16,7 @@
             </template>
         </van-nav-bar>
 
-        <!-- 解绑模式：解绑接口要求谷歌动态码，避免无验证码直接解除安全保护。 -->
-        <main v-if="isDisableMode" class="google-authenticator-disable-content">
-            <section class="google-authenticator-disable-card">
-                <span class="google-authenticator-disable-icon df-aic-jucen">
-                    <van-icon name="shield-o" size="48" color="#FF9500" />
-                </span>
-                <h1>{{ $t('解除绑定谷歌验证器') }}</h1>
-                <p>{{ $t('解除绑定后，涉及安全验证的操作将不再受到谷歌验证器保护。') }}</p>
-                <form class="google-authenticator-disable-form" @submit.prevent="disableGoogleAuthenticator">
-                    <label class="google-authenticator-disable-code common-input-focus">
-                        <input
-                            v-model="verificationCode"
-                            type="text"
-                            inputmode="numeric"
-                            autocomplete="one-time-code"
-                            maxlength="6"
-                            :placeholder="$t('请输入6位谷歌验证码')"
-                            :aria-label="$t('请输入6位谷歌验证码')"
-                            @input="normalizeVerificationCode"
-                        />
-                    </label>
-                    <button type="submit" :disabled="isSubmitting">
-                        {{ $t('确认解绑') }}
-                    </button>
-                </form>
-            </section>
-        </main>
-
-        <main v-else class="google-authenticator-content">
+        <main class="google-authenticator-content">
             <!-- 模块一：动态密钥二维码扫描区域。 -->
             <p class="google-authenticator-scan-tip">
                 {{ $t('使用谷歌验证器扫描此二维码') }}
@@ -146,15 +118,10 @@ export default {
         isForcedBinding() {
             return this.$route.query.forced === '1'
         },
-        isDisableMode() {
-            return this.$route.query.action === 'disable'
-        },
     },
     mounted() {
-        if (!this.isDisableMode) {
-            this.loadGoogleSetup()
-            window.addEventListener('resize', this.renderQrCode)
-        }
+        this.loadGoogleSetup()
+        window.addEventListener('resize', this.renderQrCode)
     },
     beforeDestroy() {
         window.removeEventListener('resize', this.renderQrCode)
@@ -234,28 +201,6 @@ export default {
                 this.isSubmitting = false
             }
         },
-        async disableGoogleAuthenticator() {
-            if (this.isSubmitting) return
-            if (!/^\d{6}$/.test(this.verificationCode)) {
-                this.$toast(this.$t('请输入6位谷歌验证码'))
-                return
-            }
-
-            this.isSubmitting = true
-            try {
-                const res = await this.$http.post('/api/users/my/google2fa/disable', {
-                    google_code: this.verificationCode,
-                })
-                if (res.code == 200) {
-                    this.$messageTip.success(this.$t('解绑成功'))
-                    this.$router.replace({ name: 'settings' })
-                }
-            } catch (error) {
-                console.log('解绑谷歌验证器失败', error)
-            } finally {
-                this.isSubmitting = false
-            }
-        },
     },
 }
 </script>
@@ -314,91 +259,6 @@ export default {
         height: 48px;
     }
 
-    // 解绑模式：延续项目深色毛玻璃卡片和蓝色主按钮风格。
-    .google-authenticator-disable-content {
-        min-height: calc(100vh - 88px);
-        padding: 168px 30px 60px;
-
-        .google-authenticator-disable-card {
-            width: 690px;
-            padding: 54px 40px 44px;
-            border: 1px solid rgba(255, 149, 0, 0.26);
-            border-radius: 32px;
-            background: linear-gradient(145deg, rgba(30, 38, 53, 0.96), rgba(18, 23, 32, 0.96));
-            box-shadow: 0 16px 52px rgba(0, 0, 0, 0.30);
-            text-align: center;
-
-            .google-authenticator-disable-icon {
-                width: 96px;
-                height: 96px;
-                margin: 0 auto;
-                border-radius: 50%;
-                background: rgba(255, 149, 0, 0.12);
-            }
-
-            h1 {
-                margin: 30px 0 0;
-                font-size: 34px;
-                font-weight: 600;
-                line-height: 48px;
-            }
-
-            p {
-                margin: 22px 0 0;
-                color: rgba(184, 195, 212, 0.72);
-                font-size: 24px;
-                line-height: 36px;
-                text-align: left;
-            }
-
-            .google-authenticator-disable-form {
-                margin-top: 46px;
-
-                .google-authenticator-disable-code {
-                    display: block;
-                    width: 610px;
-                    height: 88px;
-                    border: 1px solid rgba(255, 255, 255, 0.14);
-                    border-radius: 20px;
-                    background: rgba(255, 255, 255, 0.08);
-
-                    input {
-                        display: block;
-                        width: 100%;
-                        height: 86px;
-                        padding: 0 30px;
-                        caret-color: #4C91FF;
-                        font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
-                        font-size: 28px;
-                        line-height: 86px;
-
-                        &::placeholder {
-                            color: rgba(184, 195, 212, 0.50);
-                        }
-                    }
-                }
-
-                button {
-                    width: 610px;
-                    height: 88px;
-                    margin-top: 24px;
-                    border-radius: 999px;
-                    background: #1261F3;
-                    font-size: 28px;
-                    font-weight: 500;
-                    line-height: 88px;
-
-                    &:active {
-                        transform: scale(0.98);
-                    }
-
-                    &:disabled {
-                        opacity: 0.60;
-                    }
-                }
-            }
-        }
-    }
 
     .google-authenticator-content {
         position: relative;

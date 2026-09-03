@@ -4,7 +4,7 @@
 // })
 const path = require('path'); //引入path模块
 module.exports = {
-    publicPath: "/h5/", //部署应用包时的基本 URL
+    publicPath: "/aix/", //部署应用包时的基本 URL
     outputDir: "dist",
     productionSourceMap: false, //加速生产环境构建
     chainWebpack: config => {

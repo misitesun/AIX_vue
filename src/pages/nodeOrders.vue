@@ -232,7 +232,7 @@ export default {
             if (this.redeemingOrderId !== null) return
             this.redeemingOrderId = order.id
             Toast.loading({
-                message: 'Loading...',
+                message: this.$t('加载中'),
                 forbidClick: true,
                 loadingType: 'spinner',
                 duration: 0,

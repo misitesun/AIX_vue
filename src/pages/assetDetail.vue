@@ -64,7 +64,7 @@
         </mescroll-vue>
 
         <!-- 模块二：固定页面底部的充值与提现入口 -->
-        <footer class="asset-detail-actions">
+        <footer v-if="assetInfo.allowActions !== false" class="asset-detail-actions">
             <button
                 type="button"
                 class="asset-detail-action asset-detail-action-recharge"
@@ -97,6 +97,7 @@ const ASSET_MAP = {
         price: '',
         fiatValue: '',
         icon: assetTokenAxe,
+        allowActions: true,
     },
     aix: {
         id: 'aix',
@@ -106,6 +107,7 @@ const ASSET_MAP = {
         price: '',
         fiatValue: '',
         icon: assetTokenAix,
+        allowActions: false,
     },
     usdt: {
         id: 'usdt',
@@ -115,6 +117,29 @@ const ASSET_MAP = {
         price: '',
         fiatValue: '',
         icon: assetTokenUsdt,
+        allowActions: true,
+    },
+    'year-usdt': {
+        id: 'year-usdt',
+        symbol: 'USDT',
+        labelKey: '年终奖USDT',
+        balanceField: 'balance_year_usdt',
+        ccy: 'balance_year_usdt',
+        price: '',
+        fiatValue: '',
+        icon: assetTokenUsdt,
+        allowActions: false,
+    },
+    'year-aix': {
+        id: 'year-aix',
+        symbol: 'AIX',
+        labelKey: '年终奖AIX',
+        balanceField: 'balance_year_aix',
+        ccy: 'balance_year_aix',
+        price: '',
+        fiatValue: '',
+        icon: assetTokenAix,
+        allowActions: false,
     },
 }
 
@@ -145,6 +170,7 @@ export default {
             const asset = ASSET_MAP[assetId] || ASSET_MAP.usdt
             return {
                 ...asset,
+                symbol: asset.labelKey ? this.$t(asset.labelKey) : asset.symbol,
                 price: this.$t('无数据'),
                 fiatValue: this.$t('无数据'),
                 balance: this.balances[asset.balanceField] || this.$t('无数据'),
@@ -164,6 +190,7 @@ export default {
             }
         },
         openRecharge() {
+            if (!['usdt', 'axe'].includes(this.assetInfo.id)) return
             this.$router.push({
                 name: 'assetRecharge',
                 params: {
@@ -186,25 +213,24 @@ export default {
         mescrollInit(mescroll) {
             this.mescroll = mescroll
         },
-        // ccy 参数目前无法传真实币种，先读取服务端分页并按返回的 ccy 精确筛选。
+        // 按当前资产对应的余额字段传 ccy，由服务端完成精确的资产流水筛选。
         async upCallback(page, mescroll) {
             try {
                 const res = await this.$http.get('/api/asset_logs', {
                     page_no: page.num,
                     page_size: Math.min(page.size || 10, 20),
+                    ccy: this.assetInfo.balanceField,
                 })
                 const source = res.code == 200 && res.data && Array.isArray(res.data.asset_logs)
                     ? res.data.asset_logs
                     : []
-                const currentPageRecords = source
-                    .filter(item => item.ccy === this.assetInfo.ccy)
-                    .map(item => ({
-                        id: item.id,
-                        type: Number(item.is_inc) === 1 ? 'income' : 'expense',
-                        content: item.content,
-                        time: item.created_at,
-                        amount: item.amount,
-                    }))
+                const currentPageRecords = source.map(item => ({
+                    id: item.id,
+                    type: Number(item.is_inc) === 1 ? 'income' : 'expense',
+                    content: item.content,
+                    time: item.created_at,
+                    amount: item.amount,
+                }))
                 if (page.num === 1) this.records = []
                 this.records = this.records.concat(currentPageRecords)
                 this.$nextTick(() => mescroll.endSuccess(source.length))

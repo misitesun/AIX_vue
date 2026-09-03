@@ -78,9 +78,10 @@ export function pay_remind(_this, callback) {
     if (pay_status == 0) {
         // 0:未设置交易密码
         _this.$dialog.confirm({
-            title: '你还没有设置交易密码',
-            message: '设置交易密码才可以进行下一步',
-            confirmButtonText: '设置密码',
+            title: _this.$t('你还没有设置交易密码'),
+            message: _this.$t('设置交易密码才可以进行下一步'),
+            confirmButtonText: _this.$t('设置密码'),
+            cancelButtonText: _this.$t('取消'),
             showCancelButton: true,
             confirmButtonColor: '#139BFA',
         }).then(() => {

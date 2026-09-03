@@ -1,4 +1,5 @@
 import Vue from 'vue'
+import { translate } from '@/i18n/translate.js'
 
 // 地址显示前5*****后5
 Vue.filter('addrHide', function(name) {
@@ -46,25 +47,25 @@ Vue.filter('timeFrom', function(timestamp = null, format = 'yyyy-mm-dd') {
     // 如果小于5分钟,则返回"刚刚",其他以此类推
     let tips = '';
     switch (true) {
-    	case timer < 300:
-    		tips = '刚刚';
-    		break;
-    	case timer >= 300 && timer < 3600:
-    		tips = parseInt(timer / 60) + '分钟前';
-    		break;
-    	case timer >= 3600 && timer < 86400:
-    		tips = parseInt(timer / 3600) + '小时前';
-    		break;
-    	case timer >= 86400 && timer < 2592000:
-    		tips = parseInt(timer / 86400) + '天前';
-    		break;
+	case timer < 300:
+			tips = translate('刚刚');
+			break;
+	case timer >= 300 && timer < 3600:
+			tips = translate('{count}分钟前', { count: parseInt(timer / 60) });
+			break;
+	case timer >= 3600 && timer < 86400:
+			tips = translate('{count}小时前', { count: parseInt(timer / 3600) });
+			break;
+	case timer >= 86400 && timer < 2592000:
+			tips = translate('{count}天前', { count: parseInt(timer / 86400) });
+			break;
     	default:
     		// 如果format为false，则无论什么时间戳，都显示xx之前
     		if(format === false) {
-    			if(timer >= 2592000 && timer < 365 * 86400) {
-    				tips = parseInt(timer / (86400 * 30)) + '个月前';
-    			} else {
-    				tips = parseInt(timer / (86400 * 365)) + '年前';
+			if(timer >= 2592000 && timer < 365 * 86400) {
+				tips = translate('{count}个月前', { count: parseInt(timer / (86400 * 30)) });
+			} else {
+				tips = translate('{count}年前', { count: parseInt(timer / (86400 * 365)) });
     			}
     		} else {
     			tips = timeFormat(timestamp, format);

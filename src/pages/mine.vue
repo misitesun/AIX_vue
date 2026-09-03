@@ -20,7 +20,11 @@
                 <!-- 模块二：用户身份、邀请码与邀请链接 -->
                 <section class="mine-profile">
             <div class="mine-profile-heading df-aic-jusb">
-                <h1 class="mine-profile-email">{{ profile.email }}</h1>
+                <h1 class="mine-profile-email">
+                    <template v-if="profile.email">{{ profile.email }}</template>
+                    <template v-else-if="profile.address">{{ profile.address | addrHide }}</template>
+                    <template v-else>{{ $t('无数据') }}</template>
+                </h1>
                 <span class="mine-rank">
                     <img src="@img/mine-rank-badge.svg" alt="" class="mine-rank-background" />
                     <span class="mine-rank-content df-aic">
@@ -237,7 +241,8 @@ export default {
             checkinPendingIcon,
             defaultRankIcon,
             profile: {
-                email: this.$t('无数据'),
+                email: '',
+                address: '',
                 level: this.$t('无数据'),
                 levelIcon: '',
                 inviteCode: this.$t('无数据'),
@@ -301,7 +306,8 @@ export default {
                     const info = res.data
                     const referralCode = info.referral_code || this.$t('无数据')
                     this.profile = {
-                        email: info.email || info.address || this.$t('无数据'),
+                        email: String(info.email || '').trim(),
+                        address: String(info.address || '').trim(),
                         level: info.level && info.level.name ? info.level.name : this.$t('无数据'),
                         levelIcon: info.level && info.level.icon ? info.level.icon : '',
                         inviteCode: referralCode,

@@ -192,6 +192,7 @@
                             :key="record.id"
                             type="button"
                             class="transaction-record-item df-aic-jusb"
+                            @click="openTransactionRecord(record.url)"
                         >
                             <span class="transaction-record-copy">
                                 <span>{{ record.chain }}-{{ $t(record.side === 'buy' ? '买入交易' : '卖出交易') }}</span>
@@ -283,6 +284,7 @@ export default {
                         chain: valueOrNoData(info.chain),
                         side: 'buy',
                         hash: valueOrNoData(info.buy_tx.hash || info.buy_tx.tx_hash),
+                        url: typeof info.buy_tx.url === 'string' ? info.buy_tx.url.trim() : '',
                     })
                 }
                 if (info.sell_tx && typeof info.sell_tx === 'object' && !Array.isArray(info.sell_tx)) {
@@ -291,6 +293,7 @@ export default {
                         chain: valueOrNoData(info.chain),
                         side: 'sell',
                         hash: valueOrNoData(info.sell_tx.hash || info.sell_tx.tx_hash),
+                        url: typeof info.sell_tx.url === 'string' ? info.sell_tx.url.trim() : '',
                     })
                 }
                 this.$nextTick(() => mescroll.endSuccess(this.records.length))
@@ -298,6 +301,24 @@ export default {
                 console.log('交易详情加载失败', error)
                 mescroll.endErr()
             }
+        },
+        // Flutter 由原生打开系统浏览器；普通 H5 保持在新窗口打开区块浏览器。
+        openTransactionRecord(url) {
+            const targetUrl = typeof url === 'string' ? url.trim() : ''
+            if (!/^https?:\/\//i.test(targetUrl)) return
+
+            if (window.__FROM_FLUTTER__) {
+                if (typeof window.sendMessageToFlutter === 'function') {
+                    window.sendMessageToFlutter(JSON.stringify({
+                        type: 'openTransactionRecord',
+                        url: targetUrl,
+                    }))
+                }
+                return
+            }
+
+            const transactionWindow = window.open(targetUrl, '_blank', 'noopener,noreferrer')
+            if (transactionWindow) transactionWindow.opener = null
         },
     },
 }

@@ -25,39 +25,28 @@
                 <img src="@img/home-announcement-divider.png" alt="" />
             </div>
 
-            <!-- 未签到：点击播放真实视频，仅在原生 ended 事件后进入成功态。 -->
+            <!-- 未签到：弹窗仅承担入口，实际视频在独立播放页中完成。 -->
             <div v-if="!showSuccess" class="checkin-video-stage">
-                <video
-                    ref="checkinVideo"
+                <img
                     class="checkin-video"
-                    :src="videoSrc || undefined"
-                    :poster="posterSrc || defaultPoster"
-                    preload="metadata"
-                    playsinline
-                    webkit-playsinline
-                    disablepictureinpicture
-                    controlslist="nodownload noplaybackrate noremoteplayback"
-                    @play="isPlaying = true"
-                    @timeupdate="handleTimeUpdate"
-                    @ended="handleVideoEnded"
-                    @error="handleVideoError"
-                ></video>
+                    src="@img/home-checkin-video-frame.png"
+                    alt=""
+                />
 
                 <button
-                    v-if="!isPlaying && !awaitingSign"
                     type="button"
                     class="checkin-video-trigger"
                     :aria-label="$t('观看视频进行签到')"
-                    @click="playVideo"
+                    @click="openVideo"
                 >
                     <span class="checkin-video-play">
                         <img src="@img/home-checkin-play.png" alt="" />
                     </span>
-                    <span class="checkin-video-copy">{{ intro || $t('观看视频进行签到') }}</span>
+                    <span class="checkin-video-copy">{{ $t('观看视频进行签到') }}</span>
                 </button>
             </div>
 
-            <!-- 已签到：视频结束后自动切换到 Figma 成功状态。 -->
+            <!-- 已签到：独立视频页完成签到并返回后切换为 Figma 成功状态。 -->
             <div v-else class="checkin-success">
                 <img src="@img/home-checkin-success.png" alt="" class="checkin-success-visual" />
                 <p class="checkin-success-copy">{{ $t('恭喜签到成功') }}</p>
@@ -70,8 +59,6 @@
 </template>
 
 <script>
-import defaultPoster from '@img/home-checkin-video-frame.png'
-
 export default {
     name: 'CheckinPopup',
     props: {
@@ -83,31 +70,11 @@ export default {
             type: Boolean,
             default: false,
         },
-        posterSrc: {
-            type: String,
-            default: '',
-        },
-        intro: {
-            type: String,
-            default: '',
-        },
-        watchSeconds: {
-            type: Number,
-            default: 0,
-        },
-        signing: {
-            type: Boolean,
-            default: false,
-        },
     },
     data() {
         return {
-            defaultPoster,
             titleId: `checkin-popup-title-${this._uid}`,
             showSuccess: this.checkedIn,
-            isPlaying: false,
-            watchedSeconds: 0,
-            awaitingSign: false,
             previousBodyOverflow: '',
         }
     },
@@ -117,9 +84,6 @@ export default {
                 this.showSuccess = true
             }
         },
-        signing(value) {
-            if (!value && !this.checkedIn) this.awaitingSign = false
-        },
     },
     mounted() {
         this.previousBodyOverflow = document.body.style.overflow
@@ -127,62 +91,19 @@ export default {
         window.addEventListener('keydown', this.handleKeydown)
     },
     beforeDestroy() {
-        this.pauseVideo()
         document.body.style.overflow = this.previousBodyOverflow
         window.removeEventListener('keydown', this.handleKeydown)
     },
     methods: {
-        playVideo() {
+        openVideo() {
             if (!this.videoSrc) {
                 this.$toast(this.$t('签到视频暂未配置'))
                 this.$emit('video-missing')
                 return
             }
-
-            const video = this.$refs.checkinVideo
-            if (!video) return
-
-            const playPromise = video.play()
-            if (playPromise && typeof playPromise.catch === 'function') {
-                playPromise.catch((error) => {
-                    console.log('签到视频播放失败', error)
-                    this.isPlaying = false
-                    this.$toast(this.$t('视频播放失败，请稍后重试'))
-                })
-            }
-        },
-        handleVideoEnded() {
-            this.isPlaying = false
-            const videoDuration = Number(this.$refs.checkinVideo && this.$refs.checkinVideo.duration) || 0
-            const requiredSeconds = videoDuration > 0
-                ? Math.min(this.watchSeconds, videoDuration)
-                : this.watchSeconds
-            if (requiredSeconds > 0 && this.watchedSeconds < requiredSeconds) {
-                this.$toast(this.$t('请完整观看签到视频'))
-                this.watchedSeconds = 0
-                return
-            }
-            this.awaitingSign = true
-            this.$emit('success')
-        },
-        handleTimeUpdate(event) {
-            const currentTime = Number(event.target.currentTime) || 0
-            this.watchedSeconds = Math.max(this.watchedSeconds, currentTime)
-        },
-        handleVideoError(event) {
-            if (!this.videoSrc) return
-            console.log('签到视频加载失败', event)
-            this.isPlaying = false
-            this.$toast(this.$t('视频播放失败，请稍后重试'))
-        },
-        pauseVideo() {
-            const video = this.$refs.checkinVideo
-            if (video && !video.paused) {
-                video.pause()
-            }
+            this.$emit('watch')
         },
         closePopup() {
-            this.pauseVideo()
             this.$emit('close')
         },
         handleKeydown(event) {
@@ -287,14 +208,17 @@ export default {
             overflow: hidden;
 
             .checkin-video {
+                position: absolute;
+                top: 0;
+                left: 0;
                 display: block;
                 width: 630px;
-                height: 412px;
+                height: 436px;
+                max-width: none;
                 border: 0;
                 outline: 0;
                 background: transparent;
-                object-fit: cover;
-                object-position: center top;
+                pointer-events: none;
             }
 
             .checkin-video-trigger {

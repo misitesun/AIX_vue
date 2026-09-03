@@ -1,6 +1,7 @@
 import {
 	ethers
 } from "ethers";
+import { translate } from '@/i18n/translate.js'
 
 export default class Web3Init {
 	constructor({
@@ -30,21 +31,20 @@ export default class Web3Init {
 			" . You should remove this fallback when you deploy live"
 		);
 		this.web3 = new ethers.providers.JsonRpcProvider(this.url);
-		throw new Error("No web3 detected. Falling back to" + this.url +
-			" . You should remove this fallback when you deploy live");
+		throw new Error(translate('未检测到Web3钱包，请先安装MetaMask'));
 	}
 	async start() {
 		const {
 			web3
 		} = this;
 		if (!web3) {
-			throw new Error('钱包初始化失败');
+			throw new Error(translate('钱包初始化失败'));
 		}
 		if (this.address === null && this.artifact) {
 			const networkId = (await web3.getNetwork()).chainId;
 			const deployedNetwork = this.artifact.networks[networkId];
 			if (!deployedNetwork) {
-				throw new Error('未找到当前网络对应的合约地址');
+				throw new Error(translate('未找到当前网络对应的合约地址'));
 			}
 			this.address = deployedNetwork.address;
 		}

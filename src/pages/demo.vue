@@ -114,7 +114,7 @@ export default {
             this.isSubmitting = true;
             try {
                 Toast.loading({
-                    message: 'Loading...',
+                    message: this.$t('加载中'),
                     forbidClick: true,
                     loadingType: 'spinner',
                     duration: 0
@@ -173,7 +173,7 @@ export default {
          */
         async initAccountByErc20(coin = 'USDT') {
             if (typeof window.ethereum === 'undefined') {
-                throw new Error('请先安装 MetaMask');
+                throw new Error(this.$t('请先安装 MetaMask'));
             }
             const erc20Init = await this.$dapp.erc20.init(coin);
             this.address = erc20Init.account;
@@ -277,7 +277,7 @@ export default {
             const amount = type == 1 ? config.node_big_price : config.node_small_price;
 
             if (Number(this.usdtBalance) < Number(amount)) {
-                throw new Error('链上 USDT 余额不足');
+                throw new Error(this.$t('链上 USDT 余额不足'));
             }
 
             await this.ensureAllowance('USDT', amount);
@@ -316,7 +316,7 @@ export default {
          */
         async buyMinerDemo(amount = this.demoMinerAmount) {
             if (!amount || Number(amount) <= 0) {
-                throw new Error('请输入购买数量');
+                throw new Error(this.$t('请输入购买数量'));
             }
 
             await this.loadBalances();
@@ -327,7 +327,7 @@ export default {
                 throw new Error(`购买范围：${config.miner_order_min_amount}-${config.miner_order_max_amount} USDT`);
             }
             if (Number(this.usdtBalance) < Number(amount)) {
-                throw new Error('链上 USDT 余额不足');
+                throw new Error(this.$t('链上 USDT 余额不足'));
             }
 
             await this.ensureAllowance('USDT', amount);
@@ -365,7 +365,7 @@ export default {
          */
         async getSwapQuote(sendCoin, amount) {
             if (!amount || Number(amount) <= 0) {
-                throw new Error('请输入兑换数量');
+                throw new Error(this.$t('请输入兑换数量'));
             }
             const routerInit = await this.$dapp.router.init();
             const addressList = sendCoin === 'USDT'
@@ -462,7 +462,7 @@ export default {
          */
         async loginSignDemo() {
             if (typeof window.ethereum === 'undefined') {
-                throw new Error('请先安装 MetaMask');
+                throw new Error(this.$t('请先安装 MetaMask'));
             }
             const web3 = new ethers.providers.Web3Provider(window.ethereum);
             await window.ethereum.request({
@@ -496,7 +496,7 @@ export default {
          */
         async switchToConfiguredChain() {
             if (!window.ethereum) {
-                throw new Error('请先安装 MetaMask');
+                throw new Error(this.$t('请先安装 MetaMask'));
             }
             const chainId = Number(process.env.VUE_APP_CHAIN_ID);
             try {

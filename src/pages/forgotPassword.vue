@@ -1,5 +1,6 @@
 <template>
     <div class="forgot-password-page">
+        <div class="forgot-password-stage">
         <!-- 模块一：复用注册页的 Figma 高清背景与品牌蒙版。 -->
         <img src="@img/email-login-bg.png" alt="" class="forgot-password-background" />
         <div class="forgot-password-brand" aria-label="AIX-Quant">
@@ -114,6 +115,7 @@
             <span>{{ $t('想起密码？') }}</span>
             <button type="button" @click="goEmailLogin">{{ $t('前往登录') }}</button>
         </div>
+        </div>
     </div>
 </template>
 
@@ -172,10 +174,8 @@ export default {
                     this.startCodeCountdown()
                     return
                 }
-                this.$toast(this.$t('发送验证码失败'))
             } catch (err) {
                 console.log('发送重置密码验证码失败', err)
-                this.$toast(this.$t('发送验证码失败'))
             } finally {
                 this.isSendingCode = false
             }
@@ -223,16 +223,20 @@ export default {
                     this.goEmailLogin()
                     return
                 }
-                this.$toast(this.$t('密码重置失败'))
             } catch (err) {
                 console.log('重置登录密码失败', err)
-                this.$toast(this.$t('密码重置失败'))
             } finally {
                 this.isSubmitting = false
             }
         },
         goEmailLogin() {
-            this.$router.replace('/')
+            const query = {}
+            if (this.$route.query.ref) query.ref = this.$route.query.ref
+            const redirect = String(this.$route.query.redirect || '')
+            if (redirect && redirect.startsWith('/') && !redirect.startsWith('//')) {
+                query.redirect = redirect
+            }
+            this.$router.replace({ name: 'login', query })
         },
     },
 }
@@ -242,12 +246,22 @@ export default {
 .forgot-password-page {
     position: relative;
     width: 750px;
-    height: 1624px;
-    min-height: 100vh;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
     margin: 0 auto;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
     background: #000308;
     color: #FFFFFF;
+
+    .forgot-password-stage {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        min-height: 1624px;
+    }
 
     button {
         margin: 0;

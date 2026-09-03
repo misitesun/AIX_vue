@@ -297,8 +297,8 @@ export default {
                 balance_usdt: 'USDT',
                 balance_aix: 'AIX',
                 balance_axe: 'AXE',
-                balance_year_usdt: 'USDT',
-                balance_year_aix: 'AIX',
+                balance_year_usdt: this.$t('年终奖USDT'),
+                balance_year_aix: this.$t('年终奖AIX'),
             }
             return symbolMap[ccy] || ccy || this.$t('无数据')
         },

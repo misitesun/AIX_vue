@@ -21,7 +21,7 @@
                     class="asset-recharge-record df-aic-jucen"
                     :aria-label="$t('资产流水')"
                 >
-                    <van-icon name="orders-o" size="24" color="#fff" />
+                    <img src="@img/record.png" class="img-38" alt="" />
                 </button>
             </template>
         </van-nav-bar>
@@ -29,8 +29,6 @@
         <main class="asset-recharge-content">
             <!-- 模块一：充值币种、网络和地址信息 -->
             <section class="recharge-information">
-                <img src="@img/asset-recharge-card.svg" alt="" class="recharge-information-background" />
-
                 <button
                     type="button"
                     class="recharge-information-row recharge-information-row-coin"
@@ -47,7 +45,12 @@
                     @click="showChainSelector = true"
                 >
                     <span class="recharge-information-label">{{ $t('充值链') }}</span>
-                    <span class="recharge-information-value">{{ rechargeInfo.chain }}</span>
+                    <span
+                        class="recharge-information-value"
+                        :class="{ 'is-placeholder': !rechargeInfo.chain }"
+                    >
+                        {{ rechargeInfo.chain || $t('请选择充值链') }}
+                    </span>
                     <img src="@img/asset-recharge-chevron.svg" alt="" class="recharge-information-arrow" />
                 </button>
 
@@ -65,8 +68,8 @@
                 </div>
             </section>
 
-            <!-- 模块二：按充值地址动态生成二维码，四角装饰使用设计稿资源 -->
-            <section class="recharge-qr" :aria-label="$t('充值地址')">
+            <!-- 模块二：用户主动选择充值链后，再按充值地址生成二维码 -->
+            <section v-if="rechargeInfo.chain" class="recharge-qr" :aria-label="$t('充值地址')">
                 <img
                     src="@img/asset-recharge-corner-left.svg"
                     alt=""
@@ -87,29 +90,10 @@
                     alt=""
                     class="recharge-qr-corner recharge-qr-corner-bottom-right"
                 />
-                <img src="@img/asset-recharge-qr-frame.svg" alt="" class="recharge-qr-background" />
                 <div ref="qrCode" class="recharge-qr-code"></div>
             </section>
 
-            <!-- 模块三：充值金额输入与确认操作 -->
-            <section class="recharge-amount common-input-focus">
-                <img src="@img/asset-recharge-input.svg" alt="" class="recharge-amount-background" />
-                <input
-                    v-model="amount"
-                    type="text"
-                    inputmode="decimal"
-                    class="recharge-amount-input"
-                    :placeholder="$t('请输入充值金额')"
-                    @input="normalizeAmount"
-                />
-                <span class="recharge-amount-symbol">{{ rechargeInfo.symbol }}</span>
-            </section>
-
-            <button type="button" class="recharge-confirm" @click="confirmRecharge">
-                {{ $t('确认充值') }}
-            </button>
-
-            <!-- 模块四：充值风险提示 -->
+            <!-- 当前充值流程无需填写金额或手动确认，仅保留风险提示 -->
             <section class="recharge-warning">
                 <p>
                     1、{{ $t('请勿向上述地址充值任何非{symbol}资产，否则资产不可找回。', { symbol: rechargeInfo.symbol }) }}
@@ -123,21 +107,23 @@
             </section>
         </main>
 
-        <!-- 选择器数据保持最小集合，后续可直接替换成后端币种和链配置 -->
+        <!-- 充值链固定为 BEP20，但初始不默认选中，需由用户主动选择 -->
         <van-action-sheet
             v-model="showCoinSelector"
             class="recharge-selector"
-            :actions="coinActions"
-            :cancel-text="$t('取消')"
+            :actions="coinSelectorActions"
+            :title='$t("选择充值币种")'
             close-on-click-action
+            close-on-click-overlay
             @select="selectCoin"
         />
         <van-action-sheet
             v-model="showChainSelector"
             class="recharge-selector"
-            :actions="chainActions"
-            :cancel-text="$t('取消')"
+            :actions="chainSelectorActions"
+            :title='$t("选择充值链")'
             close-on-click-action
+            close-on-click-overlay
             @select="selectChain"
         />
     </div>
@@ -146,35 +132,52 @@
 <script>
 import QRCode from 'qrcodejs2'
 
+const RECHARGE_COINS = [
+    {
+        name: 'USDT',
+        value: 'USDT',
+        symbol: 'USDT',
+    },
+    {
+        name: 'AXE',
+        value: 'AXE',
+        symbol: 'AXE',
+    },
+]
+
 export default {
     name: 'AssetRecharge',
     data() {
         const routeSymbol = String(this.$route.params.assetId || 'usdt').toUpperCase()
+        const routeCoin = RECHARGE_COINS.find(item => item.symbol === routeSymbol) || RECHARGE_COINS[0]
 
         return {
-            amount: '',
             showCoinSelector: false,
             showChainSelector: false,
             rechargeInfo: {
-                symbol: routeSymbol,
-                chain: this.$t('无数据'),
+                symbol: routeCoin.symbol,
+                chain: '',
                 address: this.$t('无数据'),
                 minAmount: this.$t('无数据'),
             },
-            coinActions: [
-                {
-                    name: routeSymbol,
-                    value: routeSymbol,
-                },
-            ],
+            coinActions: RECHARGE_COINS.map(item => ({ ...item })),
             chainActions: [
                 {
-                    name: this.$t('无数据'),
-                    value: this.$t('无数据'),
+                    name: 'BEP20',
+                    value: 'BEP20',
                 },
             ],
         }
     },
+    computed: {
+        coinSelectorActions() {
+            return this.withSelectedAction(this.coinActions, this.rechargeInfo.symbol)
+        },
+        chainSelectorActions() {
+            return this.withSelectedAction(this.chainActions, this.rechargeInfo.chain)
+        },
+    },
+
     mounted() {
         this.loadRechargeAddress()
         window.addEventListener('resize', this.renderQrCode)
@@ -200,11 +203,19 @@ export default {
                 query: { type: 'asset' },
             })
         },
+        withSelectedAction(actions, selectedValue) {
+            return actions.map(action => ({
+                ...action,
+                className: String(action.value) === String(selectedValue) ? "is-selected" : "",
+            }))
+        },
+
         selectCoin(action) {
-            this.rechargeInfo.symbol = action.value
+            this.rechargeInfo.symbol = action.symbol
         },
         selectChain(action) {
             this.rechargeInfo.chain = action.value
+            this.renderQrCode()
         },
         copyRechargeAddress() {
             if (!this.rechargeInfo.address || this.rechargeInfo.address === this.$t('无数据')) {
@@ -217,22 +228,9 @@ export default {
                 this.$messageTip.error(this.$t('复制失败'))
             })
         },
-        // 金额字段仅保留数字和一个小数点，展示值不做额外精度格式化。
-        normalizeAmount(event) {
-            let value = String(event.target.value || '').replace(/[^\d.]/g, '')
-            const decimalIndex = value.indexOf('.')
-
-            if (decimalIndex !== -1) {
-                value = value.slice(0, decimalIndex + 1) + value.slice(decimalIndex + 1).replace(/\./g, '')
-            }
-
-            this.amount = value
-        },
-        confirmRecharge() {
-            // 当前接口仅返回充值地址，没有充值金额确认接口；保留设计稿按钮但不伪造提交结果。
-            this.$toast(this.$t('暂无充值确认接口'))
-        },
         renderQrCode() {
+            if (!this.rechargeInfo.chain) return
+
             this.$nextTick(() => {
                 if (!this.$refs.qrCode) return
                 if (!this.rechargeInfo.address || this.rechargeInfo.address === this.$t('无数据')) return
@@ -259,7 +257,6 @@ export default {
 .asset-recharge-page {
     position: relative;
     width: 750px;
-    height: 1624px;
     min-height: 100vh;
     margin: 0 auto;
     overflow-x: hidden;
@@ -325,83 +322,73 @@ export default {
     }
 
     .asset-recharge-content {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 750px;
-        height: 1624px;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        min-height: calc(100vh - 88px);
+        padding: 30px 30px 60px;
+        box-sizing: border-box;
 
         // 模块一：充值信息卡
         .recharge-information {
-            position: absolute;
-            top: 118px;
-            left: 30px;
-            width: 690px;
-            height: 291px;
-
-            .recharge-information-background {
-                position: absolute;
-                inset: 0;
-                display: block;
-                width: 690px;
-                height: 291px;
-                pointer-events: none;
-            }
+            display: flex;
+            flex: 0 0 auto;
+            flex-direction: column;
+            width: 100%;
+            min-height: 291px;
+            padding: 39px 30px 28px;
+            box-sizing: border-box;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.10);
 
             .recharge-information-row {
-                position: absolute;
-                left: 0;
-                display: block;
-                width: 690px;
-                height: 69px;
+                display: flex;
+                align-items: flex-start;
+                width: 100%;
+                min-height: 69px;
+                column-gap: 16px;
+                box-sizing: border-box;
                 text-align: left;
 
-                &.recharge-information-row-coin {
-                    top: 39px;
-                }
-
-                &.recharge-information-row-chain {
-                    top: 108px;
-                }
-
                 &.recharge-information-row-address {
-                    top: 177px;
-                    height: 86px;
+                    min-height: 86px;
                 }
 
                 .recharge-information-label {
-                    position: absolute;
-                    top: 0;
-                    left: 30px;
+                    flex: 0 1 auto;
+                    max-width: 42%;
+                    min-width: 0;
                     color: rgba(255, 255, 255, 0.50);
                     font-size: 24px;
                     line-height: 34px;
+                    overflow-wrap: anywhere;
                 }
 
                 .recharge-information-value {
-                    position: absolute;
-                    top: 0;
-                    right: 60px;
+                    flex: 1 1 0;
+                    min-width: 0;
                     font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
                     font-size: 24px;
                     line-height: 36px;
+                    overflow-wrap: anywhere;
                     text-align: right;
+
+                    &.is-placeholder {
+                        color: rgba(255, 255, 255, 0.50);
+                    }
                 }
 
                 .recharge-information-arrow {
-                    position: absolute;
-                    top: 10px;
-                    right: 30px;
                     display: block;
+                    flex: 0 0 14px;
                     width: 14px;
                     height: 14px;
+                    margin-top: 10px;
                 }
 
                 .recharge-information-address {
-                    position: absolute;
-                    top: -1px;
-                    right: 75px;
-                    width: 402px;
+                    flex: 1 1 0;
+                    min-width: 0;
                     font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
                     font-size: 24px;
                     line-height: 34px;
@@ -410,11 +397,10 @@ export default {
                 }
 
                 .recharge-information-copy {
-                    position: absolute;
-                    top: 21px;
-                    right: 30px;
+                    flex: 0 0 32px;
                     width: 32px;
                     height: 32px;
+                    margin-top: 17px;
 
                     img {
                         display: block;
@@ -427,11 +413,14 @@ export default {
 
         // 模块二：二维码及蓝色扫描框
         .recharge-qr {
-            position: absolute;
-            top: 510px;
-            left: 135px;
+            position: relative;
+            display: flex;
+            flex: 0 0 auto;
+            align-items: center;
+            justify-content: center;
             width: 480px;
             height: 480px;
+            margin: 101px auto 0;
 
             .recharge-qr-corner {
                 position: absolute;
@@ -464,105 +453,38 @@ export default {
                 }
             }
 
-            .recharge-qr-background {
-                position: absolute;
-                z-index: 1;
-                top: 60px;
-                left: 60px;
-                display: block;
-                width: 360px;
-                height: 360px;
-            }
-
             .recharge-qr-code {
-                position: absolute;
+                position: relative;
                 z-index: 2;
-                top: 90px;
-                left: 90px;
                 width: 300px;
                 height: 300px;
+                padding: 30px;
+                box-sizing: content-box;
                 overflow: hidden;
+                border-radius: 40px;
+                background: #FFFFFF;
+                font-size: 0;
+                line-height: 0;
 
                 /deep/ img,
                 /deep/ canvas {
-                    display: block !important;
                     width: 300px !important;
                     height: 300px !important;
                 }
-            }
-        }
 
-        // 模块三：金额输入与主操作按钮
-        .recharge-amount {
-            position: absolute;
-            top: 1090px;
-            left: 30px;
-            width: 690px;
-            height: 103px;
-
-            .recharge-amount-background {
-                position: absolute;
-                inset: 0;
-                display: block;
-                width: 690px;
-                height: 103px;
-                pointer-events: none;
-            }
-
-            .recharge-amount-input {
-                position: absolute;
-                z-index: 1;
-                top: 0;
-                left: 30px;
-                width: 510px;
-                height: 103px;
-                caret-color: #4C91FF;
-                font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
-                font-size: 24px;
-                line-height: 103px;
-
-                &::placeholder {
-                    color: rgba(255, 255, 255, 0.50);
+                // qrcodejs2 会同时创建 canvas 和 img，并通过内联 display 切换最终展示节点。
+                // 不要强制两者同时 display:block，否则第二个二维码会纵向叠加并被容器裁切。
+                /deep/ img {
+                    display: block;
                 }
             }
-
-            .recharge-amount-symbol {
-                position: absolute;
-                z-index: 1;
-                top: 0;
-                right: 30px;
-                height: 103px;
-                font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
-                font-size: 24px;
-                line-height: 103px;
-            }
         }
 
-        .recharge-confirm {
-            position: absolute;
-            top: 1233px;
-            left: 30px;
-            width: 690px;
-            height: 88px;
-            border-radius: 999px;
-            background: #1764F5;
-            font-size: 32px;
-            font-weight: 500;
-            line-height: 45px;
-            text-align: center;
-            transition: transform 0.2s;
-
-            &:active {
-                transform: scale(0.97);
-            }
-        }
-
-        // 模块四：充值安全说明
+        // 模块三：充值安全说明；二维码隐藏时紧随信息卡展示。
         .recharge-warning {
-            position: absolute;
-            top: 1381px;
-            left: 30px;
-            width: 690px;
+            flex: 0 0 auto;
+            width: 100%;
+            margin-top: 60px;
             color: #FF2A35;
             font-size: 24px;
             line-height: 40px;
@@ -573,19 +495,73 @@ export default {
         }
     }
 
-    // 弹出的币种/链选择器沿用项目深色毛玻璃视觉。
+    // 简洁选择面板：标题、卡片选项与明确的选中态。
     /deep/ .recharge-selector {
-        background: #15191F;
+        max-height: 54%;
+        padding: 0 24px calc(24px + env(safe-area-inset-bottom));
+        box-sizing: border-box;
+        border-radius: 32px 32px 0 0;
+        background: linear-gradient(180deg, #192233 0%, #101621 100%);
         color: #FFFFFF;
+        box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.34);
 
-        .van-action-sheet__item,
-        .van-action-sheet__cancel {
-            background: #15191F;
+        .van-action-sheet__header {
+            height: 90px;
             color: #FFFFFF;
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 90px;
         }
 
-        .van-action-sheet__gap {
-            background: #080B10;
+        .van-action-sheet__close {
+            top: 0;
+            right: 8px;
+            color: #9FAEC5;
+            font-size: 34px;
+            line-height: 90px;
+        }
+
+        .van-action-sheet__content {
+            padding-bottom: 4px;
+        }
+
+        .van-action-sheet__item {
+            position: relative;
+            min-height: 88px;
+            margin: 12px 0;
+            padding: 0 28px;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #FFFFFF;
+            font-size: 28px;
+            line-height: 86px;
+            text-align: left;
+
+            &:active {
+                background: rgba(76, 145, 255, 0.18);
+            }
+
+            &.is-selected {
+                border-color: rgba(54, 118, 255, 0.88);
+                background: rgba(29, 100, 255, 0.18);
+
+                &::after {
+                    position: absolute;
+                    top: 0;
+                    right: 28px;
+                    color: #4C91FF;
+                    content: "✓";
+                    font-size: 30px;
+                    font-weight: 600;
+                }
+            }
+        }
+
+        .van-action-sheet__gap,
+        .van-action-sheet__cancel {
+            display: none;
         }
     }
 }

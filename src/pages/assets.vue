@@ -1,82 +1,91 @@
 <template>
     <div class="page-assets">
-        <img src="@img/asset-page-bg.png" alt="" class="page-assets-background" />
-
         <!-- 公共模块：固定品牌导航，与首页同步展示账户、消息和语言入口 -->
         <home-nav-bar
             theme="assets"
             @click-notice="$go(2, '/noticeList')"
         />
 
-        <!-- 模块一：总资产概览 -->
-        <section class="asset-overview">
-            <div class="asset-overview-label">{{ $t('总资产折合价值') }}</div>
-            <div class="asset-overview-value df-aic">
-                <img src="@img/home-asset-token.png" alt="USDT" class="asset-overview-token" />
-                <div v-if="showBalance" class="asset-overview-number">
-                    <span>{{ splitDecimal(totalAssetValue).integer }}</span>
-                    <span class="asset-overview-decimal">{{ splitDecimal(totalAssetValue).decimal }}</span>
+        <main class="page-assets-content">
+            <!-- 模块一：总资产概览 -->
+            <section class="asset-overview">
+                <div class="asset-overview-heading">
+                    <div class="asset-overview-label">{{ $t('总资产折合价值') }}</div>
+                    <button
+                        type="button"
+                        class="asset-overview-eye df-aic-jucen"
+                        :aria-label="$t('显示或隐藏资产')"
+                        :aria-pressed="String(showBalance)"
+                        @click="toggleAssetVisibility"
+                    >
+                        <img :src="showBalance ? assetVisibilityEyeVisible : assetVisibilityEyeHidden" alt="" />
+                    </button>
                 </div>
-                <div v-else class="asset-overview-number">****</div>
-            </div>
-            <button
-                type="button"
-                class="asset-overview-eye df-aic-jucen"
-                :aria-label="$t('总资产折合价值')"
-                @click="showBalance = !showBalance"
-            >
-                <img src="@img/home-eye.png" alt="" />
-            </button>
-        </section>
+                <div class="asset-overview-value df-aic">
+                    <img src="@img/home-asset-token.png" alt="USDT" class="asset-overview-token" />
+                    <div v-if="showBalance" class="asset-overview-number">
+                        <span>{{ splitDecimal(totalAssetValue).integer }}</span>
+                        <span class="asset-overview-decimal">{{ splitDecimal(totalAssetValue).decimal }}</span>
+                    </div>
+                    <div v-else class="asset-overview-number">****</div>
+                </div>
+            </section>
 
-        <!-- 模块二：资产操作入口 -->
-        <section class="asset-actions">
-            <button type="button" class="asset-action-card" @click="openRecharge">
-                <span class="asset-action-icon asset-action-icon-recharge df-aic-jucen">
-                    <img src="@img/asset-action-recharge.svg" alt="" />
-                </span>
-                <span class="asset-action-label">{{ $t('充值') }}</span>
-            </button>
-            <button type="button" class="asset-action-card" @click="openWithdraw">
-                <span class="asset-action-icon asset-action-icon-withdraw df-aic-jucen">
-                    <img src="@img/asset-action-withdraw.svg" alt="" />
-                </span>
-                <span class="asset-action-label">{{ $t('提现') }}</span>
-            </button>
-            <button type="button" class="asset-action-card" @click="openTransfer">
-                <span class="asset-action-icon asset-action-icon-transfer df-aic-jucen">
-                    <img src="@img/asset-action-transfer.svg" alt="" />
-                </span>
-                <span class="asset-action-label">{{ $t('划转') }}</span>
-            </button>
-        </section>
-
-        <!-- 模块三：资产管理列表 -->
-        <section class="asset-management">
-            <h1 class="asset-management-title">{{ $t('资产管理') }}</h1>
-            <div class="asset-management-list">
-                <button
-                    v-for="item in assets"
-                    :key="item.id"
-                    type="button"
-                    class="asset-management-card"
-                    @click="openAssetDetail(item)"
-                >
-                    <img :src="item.icon" :alt="item.symbol" class="asset-management-token" />
-                    <span class="asset-management-info">
-                        <span class="asset-management-symbol">{{ item.symbol }}</span>
-                        <span v-if="item.showValuation" class="asset-management-price">{{ item.price }}</span>
+            <!-- 模块二：资产操作入口 -->
+            <section class="asset-actions">
+                <button type="button" class="asset-action-card" @click="openRecharge">
+                    <span class="asset-action-icon asset-action-icon-recharge df-aic-jucen">
+                        <img src="@img/asset-action-recharge.svg" alt="" />
                     </span>
-                    <span class="asset-management-balance">
-                        <span v-if="showBalance" class="asset-management-amount">{{ item.balance }}</span>
-                        <span v-else class="asset-management-amount">****</span>
-                        <span v-if="item.showValuation && showBalance" class="asset-management-fiat">{{ item.fiatValue }}</span>
-                        <span v-else-if="item.showValuation" class="asset-management-fiat">****</span>
-                    </span>
-                    <img src="@img/home-more-arrow.png" alt="" class="asset-management-arrow" />
+                    <span class="asset-action-label">{{ $t('充值') }}</span>
                 </button>
-            </div>
-        </section>
+                <button type="button" class="asset-action-card" @click="openWithdraw">
+                    <span class="asset-action-icon asset-action-icon-withdraw df-aic-jucen">
+                        <img src="@img/asset-action-withdraw.svg" alt="" />
+                    </span>
+                    <span class="asset-action-label">{{ $t('提现') }}</span>
+                </button>
+                <button type="button" class="asset-action-card" @click="openTransfer">
+                    <span class="asset-action-icon asset-action-icon-transfer df-aic-jucen">
+                        <img src="@img/asset-action-transfer.svg" alt="" />
+                    </span>
+                    <span class="asset-action-label">{{ $t('划转') }}</span>
+                </button>
+            </section>
+
+            <!-- 模块三：资产管理列表 -->
+            <section class="asset-management">
+                <h1 class="asset-management-title">{{ $t('资产管理') }}</h1>
+                <div class="asset-management-list">
+                    <button
+                        v-for="item in assets"
+                        :key="item.id"
+                        type="button"
+                        class="asset-management-card"
+                        @click="openAssetDetail(item)"
+                    >
+                        <img
+                            :src="item.icon"
+                            :alt="item.labelKey ? $t(item.labelKey) : item.symbol"
+                            class="asset-management-token"
+                        />
+                        <span class="asset-management-info">
+                            <span class="asset-management-symbol">
+                                {{ item.labelKey ? $t(item.labelKey) : item.symbol }}
+                            </span>
+                            <span v-if="item.showValuation" class="asset-management-price">{{ item.price }}</span>
+                        </span>
+                        <span class="asset-management-balance">
+                            <span v-if="showBalance" class="asset-management-amount">{{ item.balance }}</span>
+                            <span v-else class="asset-management-amount">****</span>
+                            <span v-if="item.showValuation && showBalance" class="asset-management-fiat">{{ item.fiatValue }}</span>
+                            <span v-else-if="item.showValuation" class="asset-management-fiat">****</span>
+                        </span>
+                        <img src="@img/home-more-arrow.png" alt="" class="asset-management-arrow" />
+                    </button>
+                </div>
+            </section>
+        </main>
 
         <!-- 公共模块：固定悬浮底部 TabBar -->
         <home-tab-bar active="assets" @change="handleTabChange" />
@@ -90,6 +99,9 @@ import assetTokenAxe from '@img/axe.png'
 import assetTokenAix from '@img/aix.png'
 import assetTokenUsdt from '@img/usdt.png'
 import BigNumber from 'bignumber.js'
+import assetVisibilityEyeVisible from '@img/register-eye-visible.svg'
+import assetVisibilityEyeHidden from '@img/register-eye-hidden.svg'
+import { getAssetVisibility, setAssetVisibility } from '@/utils/assetVisibility'
 
 export default {
     name: 'Assets',
@@ -99,7 +111,9 @@ export default {
     },
     data() {
         return {
-            showBalance: true,
+            showBalance: getAssetVisibility(),
+            assetVisibilityEyeVisible,
+            assetVisibilityEyeHidden,
             totalAssetValue: this.$t('无数据'),
             // AXE、AIX 的单价来自余额接口；右下金额按“余额 × 单价”计算。
             assets: [
@@ -136,6 +150,29 @@ export default {
                     fiatValue: '',
                     icon: assetTokenUsdt,
                 },
+                {
+                    id: 'year-usdt',
+                    symbol: 'USDT',
+                    labelKey: '年终奖USDT',
+                    balanceField: 'balance_year_usdt',
+                    showValuation: false,
+                    price: '',
+                    balance: this.$t('无数据'),
+                    fiatValue: '',
+                    icon: assetTokenUsdt,
+                },
+                {
+                    id: 'year-aix',
+                    symbol: 'AIX',
+                    labelKey: '年终奖AIX',
+                    balanceField: 'balance_year_aix',
+                    priceField: 'aix_price',
+                    showValuation: true,
+                    price: this.$t('无数据'),
+                    balance: this.$t('无数据'),
+                    fiatValue: this.$t('无数据'),
+                    icon: assetTokenAix,
+                },
             ],
         }
     },
@@ -164,6 +201,9 @@ export default {
             } catch (error) {
                 console.log('资产余额加载失败', error)
             }
+        },
+        toggleAssetVisibility() {
+            this.showBalance = setAssetVisibility(!this.showBalance)
         },
         openRecharge() {
             this.$router.push({
@@ -230,13 +270,11 @@ export default {
 
 <style scoped lang="less">
 .page-assets {
-    position: relative;
     width: 750px;
-    height: 1624px;
     min-height: 100vh;
     margin: 0 auto;
-    overflow: hidden;
-    background: #01050C;
+    overflow-x: hidden;
+    background: #01050C url('~@img/asset-page-bg.png') top center / 750px 860px no-repeat;
     color: #FFFFFF;
 
     button {
@@ -251,48 +289,73 @@ export default {
         font: inherit;
     }
 
-    .page-assets-background {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 750px;
-        height: 860px;
-        object-fit: cover;
-        pointer-events: none;
+    .page-assets-content {
+        display: flex;
+        width: 690px;
+        min-height: 100vh;
+        margin: 0 auto;
+        padding: 204px 0 158px;
+        flex-direction: column;
     }
 
     // 模块一：总资产概览
     .asset-overview {
-        position: absolute;
-        top: 204px;
-        left: 30px;
-        width: 690px;
-        height: 130px;
+        display: flex;
+        width: 100%;
+        flex-direction: column;
 
-        .asset-overview-label {
-            width: 598px;
-            font-size: 24px;
-            line-height: 34px;
+        .asset-overview-heading {
+            display: flex;
+            min-height: 72px;
+            align-items: flex-start;
+            justify-content: space-between;
+
+            .asset-overview-label {
+                min-width: 0;
+                padding-right: 20px;
+                font-size: 24px;
+                line-height: 34px;
+            }
+
+            .asset-overview-eye {
+                width: 72px;
+                height: 72px;
+                flex: 0 0 72px;
+                border: 1px solid rgba(255, 255, 255, 0.20);
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.20);
+                backdrop-filter: blur(10px);
+                -webkit-backdrop-filter: blur(10px);
+
+                img {
+                    width: 32px;
+                    height: 32px;
+                }
+            }
         }
 
         .asset-overview-value {
-            position: absolute;
-            top: 74px;
-            left: 0;
-            height: 56px;
+            min-width: 0;
+            min-height: 56px;
+            margin-top: 2px;
             gap: 16px;
 
             .asset-overview-token {
                 width: 52px;
                 height: 52px;
+                flex: 0 0 52px;
             }
 
             .asset-overview-number {
+                min-width: 0;
+                overflow: hidden;
                 font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
                 font-size: 56px;
                 font-weight: 500;
                 line-height: 56px;
                 letter-spacing: -1px;
+                text-overflow: ellipsis;
+                white-space: nowrap;
 
                 .asset-overview-decimal {
                     color: rgba(255, 255, 255, 0.60);
@@ -301,40 +364,25 @@ export default {
                 }
             }
         }
-
-        .asset-overview-eye {
-            position: absolute;
-            top: 0;
-            right: 0;
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.20);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-
-            img {
-                width: 40px;
-                height: 40px;
-            }
-        }
     }
 
     // 模块二：充值、提现、划转入口
     .asset-actions {
-        position: absolute;
-        top: 394px;
-        left: 30px;
         display: flex;
-        width: 690px;
+        width: 100%;
         height: 180px;
+        margin-top: 60px;
         gap: 15px;
 
         .asset-action-card {
-            position: relative;
-            flex: none;
-            width: 220px;
+            display: flex;
+            min-width: 0;
             height: 180px;
+            padding: 22px 26px 24px;
+            flex: 1 1 0;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: space-between;
             border: 1px solid rgba(255, 255, 255, 0.20);
             border-radius: 32px;
             background: rgba(255, 255, 255, 0.10);
@@ -343,11 +391,9 @@ export default {
             -webkit-backdrop-filter: blur(20px);
 
             .asset-action-icon {
-                position: absolute;
-                top: 21px;
-                left: 27px;
                 width: 52px;
                 height: 52px;
+                flex: 0 0 52px;
                 border-radius: 50%;
 
                 img {
@@ -357,8 +403,6 @@ export default {
                 }
 
                 &.asset-action-icon-recharge {
-                    top: 22px;
-                    left: 26px;
                     background: linear-gradient(135deg, #005FFF 0%, #277AFF 100%);
                     box-shadow: 0 4px 20px rgba(0, 132, 255, 0.40);
 
@@ -385,9 +429,7 @@ export default {
             }
 
             .asset-action-label {
-                position: absolute;
-                top: 117px;
-                left: 30px;
+                margin-left: 4px;
                 font-size: 28px;
                 font-weight: 400;
                 line-height: 39px;
@@ -397,10 +439,10 @@ export default {
 
     // 模块三：资产管理列表
     .asset-management {
-        position: absolute;
-        top: 634px;
-        left: 30px;
-        width: 690px;
+        display: flex;
+        width: 100%;
+        margin-top: 60px;
+        flex-direction: column;
 
         .asset-management-title {
             height: 45px;
@@ -414,12 +456,14 @@ export default {
             display: flex;
             flex-direction: column;
             margin-top: 30px;
-            gap: 24px;
+            gap: 16px;
 
             .asset-management-card {
-                position: relative;
-                width: 690px;
+                display: flex;
+                width: 100%;
                 height: 136px;
+                padding: 0 20px 0 30px;
+                align-items: center;
                 border-radius: 32px;
                 background: rgba(255, 255, 255, 0.10);
                 text-align: left;
@@ -427,25 +471,27 @@ export default {
                 -webkit-backdrop-filter: blur(20px);
 
                 .asset-management-token {
-                    position: absolute;
-                    top: 30px;
-                    left: 30px;
                     width: 76px;
                     height: 76px;
+                    flex: 0 0 76px;
                     object-fit: contain;
                 }
 
                 .asset-management-info {
-                    position: absolute;
-                    top: 26px;
-                    left: 126px;
                     display: flex;
+                    min-width: 0;
+                    height: 85px;
+                    margin-left: 20px;
+                    flex: 1 1 auto;
                     flex-direction: column;
 
                     .asset-management-symbol {
+                        overflow: hidden;
                         font-size: 30px;
                         font-weight: 600;
                         line-height: 45px;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
                     }
 
                     .asset-management-price {
@@ -458,40 +504,44 @@ export default {
                 }
 
                 .asset-management-balance {
-                    position: absolute;
-                    top: 27px;
-                    left: 468px;
                     display: flex;
-                    width: 168px;
+                    min-width: 0;
+                    height: 82px;
+                    flex: 0 0 168px;
                     flex-direction: column;
                     align-items: flex-end;
                     text-align: right;
 
                     .asset-management-amount {
+                        max-width: 100%;
+                        overflow: hidden;
                         font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
                         font-size: 28px;
                         font-weight: 500;
                         line-height: 42px;
+                        text-overflow: ellipsis;
                         white-space: nowrap;
                     }
 
                     .asset-management-fiat {
+                        max-width: 100%;
                         margin-top: 4px;
+                        overflow: hidden;
                         color: rgba(255, 255, 255, 0.50);
                         font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
                         font-size: 24px;
                         font-weight: 400;
                         line-height: 36px;
+                        text-overflow: ellipsis;
                         white-space: nowrap;
                     }
                 }
 
                 .asset-management-arrow {
-                    position: absolute;
-                    top: 56px;
-                    left: 646px;
                     width: 24px;
                     height: 24px;
+                    margin-left: 10px;
+                    flex: 0 0 24px;
                 }
             }
         }

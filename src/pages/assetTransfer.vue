@@ -21,7 +21,7 @@
                     class="asset-transfer-record df-aic-jucen"
                     :aria-label="$t('划转记录')"
                 >
-                    <van-icon name="orders-o" size="24" color="#fff" />
+                    <img src="@img/record.png" class="img-38" alt="" />
                 </button>
             </template>
         </van-nav-bar>
@@ -95,9 +95,10 @@
         <van-action-sheet
             v-model="showAssetSelector"
             class="transfer-selector"
-            :actions="assetActions"
-            :cancel-text="$t('取消')"
+            :actions="assetSelectorActions"
+            :title='$t("选择划转资产")'
             close-on-click-action
+            close-on-click-overlay
             @select="selectAsset"
         />
         <transaction-auth-popup
@@ -154,6 +155,9 @@ export default {
         googleRequired() {
             return Number(this.transferConfig.google_2fa_transfer_switch) === 1
         },
+        assetSelectorActions() {
+            return this.withSelectedAction(this.assetActions, this.selectedAsset.symbol)
+        },
     },
     mounted() {
         this.loadTransferData()
@@ -191,6 +195,13 @@ export default {
                 query: { type: 'transfer' },
             })
         },
+        withSelectedAction(actions, selectedValue) {
+            return actions.map(action => ({
+                ...action,
+                className: String(action.value) === String(selectedValue) ? "is-selected" : "",
+            }))
+        },
+
         selectAsset(action) {
             this.selectedAsset = {
                 ...action,
@@ -508,19 +519,73 @@ export default {
         }
     }
 
-    // 资产选择器延续资产子页面的深色毛玻璃样式。
+    // 简洁选择面板：标题、卡片选项与明确的选中态。
     /deep/ .transfer-selector {
-        background: #15191F;
+        max-height: 54%;
+        padding: 0 24px calc(24px + env(safe-area-inset-bottom));
+        box-sizing: border-box;
+        border-radius: 32px 32px 0 0;
+        background: linear-gradient(180deg, #192233 0%, #101621 100%);
         color: #FFFFFF;
+        box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.34);
 
-        .van-action-sheet__item,
-        .van-action-sheet__cancel {
-            background: #15191F;
+        .van-action-sheet__header {
+            height: 90px;
             color: #FFFFFF;
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 90px;
         }
 
-        .van-action-sheet__gap {
-            background: #080B10;
+        .van-action-sheet__close {
+            top: 0;
+            right: 8px;
+            color: #9FAEC5;
+            font-size: 34px;
+            line-height: 90px;
+        }
+
+        .van-action-sheet__content {
+            padding-bottom: 4px;
+        }
+
+        .van-action-sheet__item {
+            position: relative;
+            min-height: 88px;
+            margin: 12px 0;
+            padding: 0 28px;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #FFFFFF;
+            font-size: 28px;
+            line-height: 86px;
+            text-align: left;
+
+            &:active {
+                background: rgba(76, 145, 255, 0.18);
+            }
+
+            &.is-selected {
+                border-color: rgba(54, 118, 255, 0.88);
+                background: rgba(29, 100, 255, 0.18);
+
+                &::after {
+                    position: absolute;
+                    top: 0;
+                    right: 28px;
+                    color: #4C91FF;
+                    content: "✓";
+                    font-size: 30px;
+                    font-weight: 600;
+                }
+            }
+        }
+
+        .van-action-sheet__gap,
+        .van-action-sheet__cancel {
+            display: none;
         }
     }
 }

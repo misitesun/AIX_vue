@@ -21,7 +21,7 @@
                     class="asset-withdraw-record df-aic-jucen"
                     :aria-label="$t('提现记录')"
                 >
-                    <van-icon name="orders-o" size="24" color="#fff" />
+                    <img src="@img/record.png" class="img-38" alt="" />
                 </button>
             </template>
         </van-nav-bar>
@@ -51,7 +51,12 @@
                     @click="showChainSelector = true"
                 >
                     <span class="withdraw-information-label">{{ $t('提现链') }}</span>
-                    <span class="withdraw-information-value">{{ selectedChain }}</span>
+                    <span
+                        class="withdraw-information-value"
+                        :class="{ 'is-placeholder': !selectedChain }"
+                    >
+                        {{ selectedChain || $t('请选择提现链') }}
+                    </span>
                     <img
                         src="@img/asset-withdraw-chevron-chain.svg"
                         alt=""
@@ -107,21 +112,23 @@
             </button>
         </main>
 
-        <!-- 选择器：币种提供少量默认项，链按当前需求固定为 TEC20 与 ERC20 -->
+        <!-- 提现链固定为 BEP20，但初始不默认选中，需由用户主动选择 -->
         <van-action-sheet
             v-model="showCoinSelector"
             class="withdraw-selector"
-            :actions="coinActions"
-            :cancel-text="$t('取消')"
+            :actions="coinSelectorActions"
+            :title='$t("选择提现币种")'
             close-on-click-action
+            close-on-click-overlay
             @select="selectCoin"
         />
         <van-action-sheet
             v-model="showChainSelector"
             class="withdraw-selector"
-            :actions="chainActions"
-            :cancel-text="$t('取消')"
+            :actions="chainSelectorActions"
+            :title='$t("选择提现链")'
             close-on-click-action
+            close-on-click-overlay
             @select="selectChain"
         />
         <transaction-auth-popup
@@ -160,8 +167,8 @@ const WITHDRAW_COINS = [
 
 const WITHDRAW_CHAINS = [
     {
-        name: '',
-        value: '',
+        name: 'BEP20',
+        value: 'BEP20',
     },
 ]
 
@@ -185,20 +192,23 @@ export default {
                 ...routeCoin,
                 balance: this.$t('无数据'),
             },
-            selectedChain: this.$t('无数据'),
+            selectedChain: '',
             withdrawConfig: {},
             coinActions: WITHDRAW_COINS.map(item => ({ ...item, balance: this.$t('无数据') })),
-            chainActions: WITHDRAW_CHAINS.map(item => ({
-                ...item,
-                name: this.$t('无数据'),
-                value: this.$t('无数据'),
-            })),
+            chainActions: WITHDRAW_CHAINS.map(item => ({ ...item })),
         }
     },
     computed: {
         googleRequired() {
             return Number(this.withdrawConfig.google_2fa_withdraw_switch) === 1
         },
+        coinSelectorActions() {
+            return this.withSelectedAction(this.coinActions, this.selectedCoin.symbol)
+        },
+        chainSelectorActions() {
+            return this.withSelectedAction(this.chainActions, this.selectedChain)
+        },
+
         selectedCoinConfig() {
             const prefix = this.selectedCoin.symbol.toLowerCase()
             return {
@@ -245,6 +255,13 @@ export default {
                 query: { type: 'withdraw' },
             })
         },
+        withSelectedAction(actions, selectedValue) {
+            return actions.map(action => ({
+                ...action,
+                className: String(action.value) === String(selectedValue) ? "is-selected" : "",
+            }))
+        },
+
         selectCoin(action) {
             this.selectedCoin = {
                 ...action,
@@ -274,6 +291,11 @@ export default {
 
             if (!this.selectedCoinConfig.enabled) {
                 this.$toast(this.$t('当前币种暂未开放提现'))
+                return
+            }
+
+            if (!this.selectedChain) {
+                this.$toast(this.$t('请选择提现链'))
                 return
             }
 
@@ -454,6 +476,10 @@ export default {
                     font-size: 28px;
                     line-height: 42px;
                     text-align: right;
+
+                    &.is-placeholder {
+                        color: rgba(255, 255, 255, 0.50);
+                    }
                 }
 
                 .withdraw-information-arrow {
@@ -597,19 +623,73 @@ export default {
         }
     }
 
-    // 币种和链选择器延续充值页的深色毛玻璃样式。
+    // 简洁选择面板：标题、卡片选项与明确的选中态。
     /deep/ .withdraw-selector {
-        background: #15191F;
+        max-height: 54%;
+        padding: 0 24px calc(24px + env(safe-area-inset-bottom));
+        box-sizing: border-box;
+        border-radius: 32px 32px 0 0;
+        background: linear-gradient(180deg, #192233 0%, #101621 100%);
         color: #FFFFFF;
+        box-shadow: 0 -18px 48px rgba(0, 0, 0, 0.34);
 
-        .van-action-sheet__item,
-        .van-action-sheet__cancel {
-            background: #15191F;
+        .van-action-sheet__header {
+            height: 90px;
             color: #FFFFFF;
+            font-size: 28px;
+            font-weight: 600;
+            line-height: 90px;
         }
 
-        .van-action-sheet__gap {
-            background: #080B10;
+        .van-action-sheet__close {
+            top: 0;
+            right: 8px;
+            color: #9FAEC5;
+            font-size: 34px;
+            line-height: 90px;
+        }
+
+        .van-action-sheet__content {
+            padding-bottom: 4px;
+        }
+
+        .van-action-sheet__item {
+            position: relative;
+            min-height: 88px;
+            margin: 12px 0;
+            padding: 0 28px;
+            box-sizing: border-box;
+            border: 1px solid rgba(255, 255, 255, 0.10);
+            border-radius: 18px;
+            background: rgba(255, 255, 255, 0.06);
+            color: #FFFFFF;
+            font-size: 28px;
+            line-height: 86px;
+            text-align: left;
+
+            &:active {
+                background: rgba(76, 145, 255, 0.18);
+            }
+
+            &.is-selected {
+                border-color: rgba(54, 118, 255, 0.88);
+                background: rgba(29, 100, 255, 0.18);
+
+                &::after {
+                    position: absolute;
+                    top: 0;
+                    right: 28px;
+                    color: #4C91FF;
+                    content: "✓";
+                    font-size: 30px;
+                    font-weight: 600;
+                }
+            }
+        }
+
+        .van-action-sheet__gap,
+        .van-action-sheet__cancel {
+            display: none;
         }
     }
 }

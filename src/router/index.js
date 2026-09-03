@@ -1,10 +1,9 @@
 import Vue from 'vue'
-import store from '../store'
 import Router from 'vue-router'
 Vue.use(Router)
 const router = new Router({
     mode: 'history',
-    base: '/h5/',
+    base: '/aix/',
     scrollBehavior(to, from, savedPosition) {
         if (savedPosition) {
             return savedPosition
@@ -16,13 +15,21 @@ const router = new Router({
         }
     },
     routes: [
-        // 邮箱登录
+        // 启动页：根据登录态和钱包环境分流至对应登录页。
         {
             path: '/',
+            name: 'startup',
+            component: () =>
+                import("@/pages/startup"),
+            meta: { public: true },
+        },
+        // 邮箱登录
+        {
+            path: '/email-login',
             name: 'login',
             component: () =>
                 import("@/pages/emailLogin"),
-            meta: { public: true },
+            meta: { public: true, guestOnly: true },
         },
         // 钱包地址签名登录
         {
@@ -30,7 +37,7 @@ const router = new Router({
             name: 'walletLogin',
             component: () =>
                 import("@/pages/login"),
-            meta: { public: true },
+            meta: { public: true, guestOnly: true },
         },
         // 邮箱注册
         {
@@ -38,7 +45,7 @@ const router = new Router({
             name: 'register',
             component: () =>
                 import("@/pages/register"),
-            meta: { public: true },
+            meta: { public: true, guestOnly: true },
         },
         // 忘记登录密码
         {
@@ -46,7 +53,7 @@ const router = new Router({
             name: 'forgotPassword',
             component: () =>
                 import("@/pages/forgotPassword"),
-            meta: { public: true },
+            meta: { public: true, guestOnly: true },
         },
         // 设置 - 修改登录密码
         {
@@ -55,12 +62,42 @@ const router = new Router({
             component: () =>
                 import("@/pages/changeLoginPassword"),
         },
+        // 设置 - 修改支付密码
+        {
+            path: '/settings/pay-password',
+            name: 'changePayPassword',
+            component: () =>
+                import("@/pages/changePayPassword"),
+        },
+        // 设置 - 绑定邮箱
+        {
+            path: '/settings/bind-email',
+            name: 'bindEmail',
+            component: () =>
+                import("@/pages/accountBinding"),
+            props: { bindingType: 'email' },
+        },
+        // 设置 - 绑定钱包地址
+        {
+            path: '/settings/bind-wallet-address',
+            name: 'bindWalletAddress',
+            component: () =>
+                import("@/pages/accountBinding"),
+            props: { bindingType: 'address' },
+        },
         // 首页
         {
             path: '/index',
             name: 'index',
             component: () =>
                 import("@/pages/index"),
+        },
+        // 独立签到视频：完成接口要求的观看时长后才允许关闭。
+        {
+            path: '/checkin-video',
+            name: 'checkinVideo',
+            component: () =>
+                import("@/pages/checkinVideo"),
         },
         // 首页全网实时交易记录
         {
@@ -179,18 +216,31 @@ const router = new Router({
 })
 
 
-// 登录拦截 本地没有存token,请重新登录
+// 登录拦截：未登录时统一先进入启动页，由启动页判断钱包环境并选择登录方式。
 router.beforeEach((to, from, next) => {
-    // 判断有没有登录
-    if (!localStorage.getItem('token')) {
-        if (to.matched.some(record => record.meta.public)) {
-            next();
-        } else {
-            next({ path: '/', query: { redirect: to.fullPath } })
+    const hasToken = Boolean(localStorage.getItem('token'))
+    const isPublicRoute = to.matched.some(record => record.meta && record.meta.public)
+    const isGuestOnlyRoute = to.matched.some(record => record.meta && record.meta.guestOnly)
+
+    if (hasToken) {
+        // 已登录用户不再进入登录、注册和忘记密码页面。
+        if (isGuestOnlyRoute) {
+            next({ name: 'index' })
+            return
         }
-    } else {
-        next();
+        next()
+        return
     }
+
+    if (isPublicRoute) {
+        next()
+        return
+    }
+
+    next({
+        name: 'startup',
+        query: { redirect: to.fullPath },
+    })
 });
 
 

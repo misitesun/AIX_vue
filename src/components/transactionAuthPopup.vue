@@ -7,13 +7,22 @@
             <label class="transaction-auth-field common-input-focus">
                 <input
                     v-model="payPassword"
-                    type="password"
+                    :type="showPayPassword ? 'text' : 'password'"
                     inputmode="numeric"
                     maxlength="6"
                     autocomplete="off"
                     :placeholder="$t('请输入支付密码')"
                     @input="payPassword = normalizeCode(payPassword)"
                 />
+                <button
+                    type="button"
+                    class="transaction-auth-password-toggle df-aic-jucen"
+                    :aria-label="$t('显示或隐藏支付密码')"
+                    :aria-pressed="showPayPassword"
+                    @click="showPayPassword = !showPayPassword"
+                >
+                    <img :src="showPayPassword ? eyeHidden : eyeVisible" alt="" />
+                </button>
             </label>
 
             <!-- 仅当接口配置开关开启时展示谷歌验证码。 -->
@@ -42,6 +51,9 @@
 </template>
 
 <script>
+import eyeVisible from '@img/register-eye-visible.svg'
+import eyeHidden from '@img/register-eye-hidden.svg'
+
 export default {
     name: 'TransactionAuthPopup',
     props: {
@@ -62,7 +74,10 @@ export default {
         return {
             payPassword: '',
             googleCode: '',
+            showPayPassword: false,
             previousBodyOverflow: '',
+            eyeVisible,
+            eyeHidden,
         }
     },
     mounted() {
@@ -138,7 +153,8 @@ export default {
             background: rgba(255, 255, 255, 0.10);
 
             input {
-                width: 100%;
+                min-width: 0;
+                flex: 1 1 auto;
                 border: 0;
                 outline: 0;
                 background: transparent;
@@ -147,6 +163,22 @@ export default {
 
                 &::placeholder {
                     color: rgba(184, 195, 212, 0.50);
+                }
+            }
+
+            .transaction-auth-password-toggle {
+                width: 48px;
+                height: 84px;
+                margin-left: 8px;
+                padding: 0;
+                flex: 0 0 48px;
+                border: 0;
+                outline: 0;
+                background: transparent;
+
+                img {
+                    width: 32px;
+                    height: 32px;
                 }
             }
         }
