@@ -64,12 +64,6 @@
                             <template v-if="activeType === 'asset'">
                                 <header class="asset-record-heading df-aic-jusb">
                                     <div class="asset-record-title df-aic">
-                                        <span
-                                            class="asset-record-direction df-aic-jucen"
-                                            :class="record.isIncrease ? 'is-income' : 'is-expense'"
-                                        >
-                                            {{ record.isIncrease ? '+' : '−' }}
-                                        </span>
                                         <div>
                                             <h2>{{ record.content }}</h2>
                                             <time>{{ record.createdAt }}</time>
@@ -82,10 +76,6 @@
                                         {{ record.isIncrease ? '+' : '−' }}{{ record.amount }} {{ record.symbol }}
                                     </div>
                                 </header>
-                                <div class="asset-record-footer df-aic-jusb">
-                                    <span>{{ record.isIncrease ? $t('收入') : $t('支出') }}</span>
-                                    <span>#{{ record.id }}</span>
-                                </div>
                             </template>
 
                             <!-- 提现记录卡片 -->
@@ -460,25 +450,6 @@ export default {
                             min-width: 0;
                             gap: 16px;
 
-                            .asset-record-direction {
-                                width: 60px;
-                                height: 60px;
-                                flex: 0 0 60px;
-                                border-radius: 50%;
-                                font-size: 36px;
-                                font-weight: 500;
-
-                                &.is-income {
-                                    background: rgba(48, 224, 91, 0.14);
-                                    color: #30E05B;
-                                }
-
-                                &.is-expense {
-                                    background: rgba(255, 65, 70, 0.14);
-                                    color: #FF4146;
-                                }
-                            }
-
                             h2 {
                                 max-width: 350px;
                                 margin: 0;
@@ -586,14 +557,6 @@ export default {
                         }
                     }
 
-                    .asset-record-footer {
-                        width: 630px;
-                        margin-top: 24px;
-                        padding-top: 20px;
-                        border-top: 1px solid rgba(255, 255, 255, 0.10);
-                        color: rgba(255, 255, 255, 0.42);
-                        font-size: 21px;
-                    }
                 }
             }
         }

@@ -146,11 +146,6 @@
                             </div>
                             <div class="transaction-info-divider"></div>
                             <div class="transaction-info-row">
-                                <span class="transaction-info-label">{{ $t('操作ID') }}</span>
-                                <span class="transaction-info-value">{{ detail.operationId }}</span>
-                            </div>
-                            <div class="transaction-info-divider"></div>
-                            <div class="transaction-info-row">
                                 <span class="transaction-info-label">{{ $t('链') }}</span>
                                 <span class="transaction-info-value">{{ detail.chain }}</span>
                             </div>

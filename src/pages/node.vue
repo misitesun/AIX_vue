@@ -9,7 +9,7 @@
         <main class="node-main">
             <!-- 模块一：银行卡节点主视觉 -->
             <div class="node-hero-visual">
-                <img :src="nodeInfo.image || nodeHeroFallback" alt="" />
+                <img :src="nodeHeroFallback" alt="" />
             </div>
 
             <!-- 模块二：量化节点认购信息 -->

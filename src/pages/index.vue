@@ -186,33 +186,43 @@
                 </button>
             </div>
 
-            <div class="transaction-list">
-                <button
-                    type="button"
-                    class="transaction-item"
-                    v-for="item in transactions"
-                    :key="item.id"
-                    :aria-label="$t('交易详情')"
-                    @click="$router.push('/transactions/' + item.id)"
+            <div class="transaction-list" :style="transactionCarouselViewportStyle">
+                <div
+                    ref="transactionCarouselTrack"
+                    class="transaction-list-track"
+                    :class="{ 'is-animated': hasTransactionCarousel && transactionCarouselTransitionEnabled }"
+                    :style="transactionCarouselTrackStyle"
+                    @transitionend="handleTransactionCarouselTransitionEnd"
                 >
-                    <div class="transaction-item-column transaction-item-hash">
-                        <div class="transaction-item-label">{{ $t('哈希') }}</div>
-                        <div class="transaction-item-main" :title="item.hash">
-                            {{ item.hash }}
+                    <button
+                        v-for="(item, index) in carouselTransactions"
+                        :key="`${item.id}-${index}`"
+                        ref="transactionCarouselItems"
+                        ref-in-for
+                        type="button"
+                        class="transaction-item"
+                        :aria-label="$t('交易详情')"
+                        @click="$router.push('/transactions/' + item.id)"
+                    >
+                        <div class="transaction-item-column transaction-item-hash">
+                            <div class="transaction-item-label">{{ $t('哈希') }}</div>
+                            <div class="transaction-item-main" :title="item.hash">
+                                {{ item.hash }}
+                            </div>
+                            <div class="transaction-item-sub">{{ item.token }}</div>
                         </div>
-                        <div class="transaction-item-sub">{{ item.token }}</div>
-                    </div>
-                    <div class="transaction-item-column transaction-item-amount">
-                        <div class="transaction-item-label">{{ $t('金额') }}</div>
-                        <div class="transaction-item-main">{{ item.amount }}</div>
-                        <div class="transaction-item-sub text-line-1">{{ item.route }}</div>
-                    </div>
-                    <div class="transaction-item-column transaction-item-profit">
-                        <div class="transaction-item-label">{{ $t('收益/回报率') }}</div>
-                        <div class="transaction-item-main">{{ item.profit }}</div>
-                        <div class="transaction-item-rate">{{ item.rate }}</div>
-                    </div>
-                </button>
+                        <div class="transaction-item-column transaction-item-amount">
+                            <div class="transaction-item-label">{{ $t('金额') }}</div>
+                            <div class="transaction-item-main">{{ item.amount }}</div>
+                            <div class="transaction-item-sub text-line-1">{{ item.route }}</div>
+                        </div>
+                        <div class="transaction-item-column transaction-item-profit">
+                            <div class="transaction-item-label">{{ $t('收益/回报率') }}</div>
+                            <div class="transaction-item-main">{{ item.profit }}</div>
+                            <div class="transaction-item-rate">{{ item.rate }}</div>
+                        </div>
+                    </button>
+                </div>
                 <no-data v-if="!transactions.length"></no-data>
             </div>
         </section>
@@ -276,6 +286,11 @@ import assetVisibilityEyeVisible from '@img/register-eye-visible.svg'
 import assetVisibilityEyeHidden from '@img/register-eye-hidden.svg'
 import { getAssetVisibility, setAssetVisibility } from '@/utils/assetVisibility'
 
+const TRANSACTION_PAGE_SIZE = 100
+const TRANSACTION_VISIBLE_COUNT = 4
+const TRANSACTION_CAROUSEL_INTERVAL = 3000
+const TRANSACTION_REFRESH_INTERVAL = 20 * 1000
+
 export default {
     name: 'Index',
     components: {
@@ -325,6 +340,14 @@ export default {
                 t7T9Dividend: this.$t('无数据'),
             },
             transactions: [],
+            isLoadingTransactions: false,
+            transactionCarouselIndex: 0,
+            transactionCarouselStep: 0,
+            transactionCarouselViewportHeight: 0,
+            transactionCarouselTransitionEnabled: true,
+            transactionCarouselTimer: null,
+            transactionRefreshTimer: null,
+            transactionCarouselFrame: null,
         }
     },
     computed: {
@@ -333,6 +356,23 @@ export default {
         },
         googleOrderRequired() {
             return Number(this.orderConfig.google_2fa_order_switch) === 1
+        },
+        // 末尾补足首屏数据，滚动到补位项后无感回到第一条，实现连续向上轮播。
+        carouselTransactions() {
+            if (this.transactions.length <= TRANSACTION_VISIBLE_COUNT) return this.transactions
+            return this.transactions.concat(this.transactions.slice(0, TRANSACTION_VISIBLE_COUNT))
+        },
+        hasTransactionCarousel() {
+            return this.transactions.length > TRANSACTION_VISIBLE_COUNT && this.transactionCarouselStep > 0
+        },
+        transactionCarouselTrackStyle() {
+            return {
+                transform: `translate3d(0, -${this.transactionCarouselIndex * this.transactionCarouselStep}px, 0)`,
+            }
+        },
+        transactionCarouselViewportStyle() {
+            if (!this.transactionCarouselViewportHeight) return {}
+            return { height: `${this.transactionCarouselViewportHeight}px` }
         },
         plan() {
             const product = this.selectedProduct
@@ -384,9 +424,13 @@ export default {
     },
     mounted() {
         this.loadHomeData()
+        this.startTransactionTimers()
+        window.addEventListener('resize', this.syncTransactionCarouselLayout)
     },
     beforeDestroy() {
         document.body.style.overflow = this.previousBodyOverflow
+        this.stopTransactionTimers()
+        window.removeEventListener('resize', this.syncTransactionCarouselLayout)
     },
     methods: {
         goToXSmartPay() {
@@ -506,16 +550,98 @@ export default {
                 this.orderConfigLoaded = true
             }
         },
+        startTransactionTimers() {
+            this.stopTransactionTimers()
+            this.transactionCarouselTimer = window.setInterval(() => {
+                this.advanceTransactionCarousel()
+            }, TRANSACTION_CAROUSEL_INTERVAL)
+            this.transactionRefreshTimer = window.setInterval(() => {
+                this.loadTransactions()
+            }, TRANSACTION_REFRESH_INTERVAL)
+        },
+        stopTransactionTimers() {
+            if (this.transactionCarouselTimer !== null) {
+                window.clearInterval(this.transactionCarouselTimer)
+                this.transactionCarouselTimer = null
+            }
+            if (this.transactionRefreshTimer !== null) {
+                window.clearInterval(this.transactionRefreshTimer)
+                this.transactionRefreshTimer = null
+            }
+            if (this.transactionCarouselFrame !== null) {
+                window.cancelAnimationFrame(this.transactionCarouselFrame)
+                this.transactionCarouselFrame = null
+            }
+        },
         async loadTransactions() {
+            if (this.isLoadingTransactions) return
+            this.isLoadingTransactions = true
             try {
-                const res = await this.$http.get('/api/block_logs', { page_no: 1, page_size: 4 })
+                const res = await this.$http.get('/api/block_logs', {
+                    page_no: 1,
+                    page_size: TRANSACTION_PAGE_SIZE,
+                })
                 if (res.code == 200) {
                     const list = res.data && Array.isArray(res.data.block_logs) ? res.data.block_logs : []
                     this.transactions = list.map(this.mapTransaction)
+                    this.resetTransactionCarousel()
                 }
             } catch (error) {
                 console.log('首页交易记录加载失败', error)
+            } finally {
+                this.isLoadingTransactions = false
             }
+        },
+        resetTransactionCarousel() {
+            this.transactionCarouselTransitionEnabled = false
+            this.transactionCarouselIndex = 0
+            this.transactionCarouselStep = 0
+            this.transactionCarouselViewportHeight = 0
+            this.$nextTick(() => {
+                this.syncTransactionCarouselLayout()
+                this.enableTransactionCarouselTransition()
+            })
+        },
+        syncTransactionCarouselLayout() {
+            const items = this.$refs.transactionCarouselItems
+            const firstItem = Array.isArray(items) ? items[0] : items
+            const track = this.$refs.transactionCarouselTrack
+            if (!firstItem || !track) {
+                this.transactionCarouselStep = 0
+                this.transactionCarouselViewportHeight = 0
+                return
+            }
+
+            const itemHeight = firstItem.getBoundingClientRect().height
+            const trackStyle = window.getComputedStyle(track)
+            const rowGap = Number.parseFloat(trackStyle.rowGap) || Number.parseFloat(trackStyle.gap) || 0
+            const visibleCount = Math.min(this.transactions.length, TRANSACTION_VISIBLE_COUNT)
+            this.transactionCarouselStep = itemHeight + rowGap
+            this.transactionCarouselViewportHeight = visibleCount
+                ? itemHeight * visibleCount + rowGap * (visibleCount - 1)
+                : 0
+        },
+        enableTransactionCarouselTransition() {
+            if (this.transactionCarouselFrame !== null) {
+                window.cancelAnimationFrame(this.transactionCarouselFrame)
+            }
+            this.transactionCarouselFrame = window.requestAnimationFrame(() => {
+                this.transactionCarouselFrame = null
+                this.transactionCarouselTransitionEnabled = true
+            })
+        },
+        advanceTransactionCarousel() {
+            if (!this.hasTransactionCarousel) return
+            this.transactionCarouselTransitionEnabled = true
+            this.transactionCarouselIndex += 1
+        },
+        handleTransactionCarouselTransitionEnd(event) {
+            if (event.target !== this.$refs.transactionCarouselTrack || event.propertyName !== 'transform') return
+            if (this.transactionCarouselIndex !== this.transactions.length) return
+
+            this.transactionCarouselTransitionEnabled = false
+            this.transactionCarouselIndex = 0
+            this.$nextTick(() => this.enableTransactionCarouselTransition())
         },
         mapTransaction(item) {
             return {
@@ -1258,69 +1384,81 @@ export default {
             flex: 0 0 auto;
             flex-direction: column;
             width: 100%;
-            gap: 20px;
             margin-top: 30px;
+            overflow: hidden;
 
-            .transaction-item {
+            .transaction-list-track {
                 display: flex;
-                flex: 0 0 auto;
                 width: 100%;
-                min-height: 168px;
-                padding: 30px;
-                gap: 49px;
-                border-radius: 32px;
-                background: rgba(255, 255, 255, 0.10);
-                text-align: left;
+                flex-direction: column;
+                gap: 20px;
+                will-change: transform;
 
-                .transaction-item-column {
+                &.is-animated {
+                    transition: transform 420ms ease;
+                }
+
+                .transaction-item {
                     display: flex;
-                    flex: 1 1 0;
-                    flex-direction: column;
-                    min-width: 0;
-                    gap: 12px;
-                    line-height: normal;
+                    flex: 0 0 auto;
+                    width: 100%;
+                    min-height: 168px;
+                    padding: 30px;
+                    gap: 49px;
+                    border-radius: 32px;
+                    background: rgba(255, 255, 255, 0.10);
+                    text-align: left;
 
-                    &.transaction-item-hash {
-                        flex-basis: 180px;
-                    }
+                    .transaction-item-column {
+                        display: flex;
+                        flex: 1 1 0;
+                        flex-direction: column;
+                        min-width: 0;
+                        gap: 12px;
+                        line-height: normal;
 
-                    &.transaction-item-amount,
-                    &.transaction-item-profit {
-                        flex-basis: 176px;
-                    }
+                        &.transaction-item-hash {
+                            flex-basis: 180px;
+                        }
 
-                    &.transaction-item-profit {
-                        align-items: flex-end;
-                        text-align: right;
-                    }
+                        &.transaction-item-amount,
+                        &.transaction-item-profit {
+                            flex-basis: 176px;
+                        }
 
-                    .transaction-item-label {
-                        width: 100%;
-                        color: rgba(255, 255, 255, 0.50);
-                        font-size: 20px;
-                        line-height: 28px;
-                    }
+                        &.transaction-item-profit {
+                            align-items: flex-end;
+                            text-align: right;
+                        }
 
-                    .transaction-item-main {
-                        width: 100%;
-                        overflow: hidden;
-                        font-size: 24px;
-                        font-weight: 500;
-                        line-height: 34px;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                    }
+                        .transaction-item-label {
+                            width: 100%;
+                            color: rgba(255, 255, 255, 0.50);
+                            font-size: 20px;
+                            line-height: 28px;
+                        }
 
-                    .transaction-item-sub,
-                    .transaction-item-rate {
-                        width: 100%;
-                        color: rgba(255, 255, 255, 0.50);
-                        font-size: 22px;
-                        line-height: 31px;
-                    }
+                        .transaction-item-main {
+                            width: 100%;
+                            overflow: hidden;
+                            font-size: 24px;
+                            font-weight: 500;
+                            line-height: 34px;
+                            text-overflow: ellipsis;
+                            white-space: nowrap;
+                        }
 
-                    .transaction-item-rate {
-                        color: #4C91FF;
+                        .transaction-item-sub,
+                        .transaction-item-rate {
+                            width: 100%;
+                            color: rgba(255, 255, 255, 0.50);
+                            font-size: 22px;
+                            line-height: 31px;
+                        }
+
+                        .transaction-item-rate {
+                            color: #4C91FF;
+                        }
                     }
                 }
             }

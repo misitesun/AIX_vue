@@ -28,15 +28,15 @@
                 <div class="global-transaction-chains" role="tablist">
                     <button
                         v-for="chain in chains"
-                        :key="chain"
+                        :key="chain.value || 'all'"
                         type="button"
                         role="tab"
                         class="global-transaction-chain"
-                        :class="{ active: activeChain === chain }"
-                        :aria-selected="activeChain === chain"
-                        @click="changeChain(chain)"
+                        :class="{ active: activeChain === chain.value }"
+                        :aria-selected="activeChain === chain.value"
+                        @click="changeChain(chain.value)"
                     >
-                        {{ chain }}
+                        {{ $t(chain.label) }}
                     </button>
                 </div>
 
@@ -81,8 +81,15 @@ export default {
     data() {
         return {
             mescroll: null,
-            activeChain: 'SOL',
-            chains: ['SOL', 'BSC', 'ETH', 'TRX', 'POLYGON'],
+            activeChain: '',
+            chains: [
+                { value: '', label: '全部' },
+                { value: 'SOL', label: 'SOL' },
+                { value: 'BSC', label: 'BSC' },
+                { value: 'ETH', label: 'ETH' },
+                { value: 'TRX', label: 'TRX' },
+                { value: 'POLYGON', label: 'POLYGON' },
+            ],
             mescrollUp: {
                 callback: this.upCallback,
                 page: {
@@ -113,14 +120,15 @@ export default {
                 params: { transactionId: transaction.id },
             })
         },
-        // 链筛选由服务端分页处理，确保每页数量和无数据状态准确。
+        // 链筛选由服务端分页处理；选择“全部”时不传 chain，确保返回所有币种。
         async upCallback(page, mescroll) {
             try {
-                const res = await this.$http.get('/api/block_logs', {
+                const params = {
                     page_no: page.num,
                     page_size: Math.min(page.size || 10, 20),
-                    chain: this.activeChain,
-                })
+                }
+                if (this.activeChain) params.chain = this.activeChain
+                const res = await this.$http.get('/api/block_logs', params)
                 const source = res.code == 200 && res.data && Array.isArray(res.data.block_logs)
                     ? res.data.block_logs
                     : []
