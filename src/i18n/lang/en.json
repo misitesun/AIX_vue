@@ -436,6 +436,7 @@
     "钱包地址绑定失败": "Failed to link wallet address",
     "请输入钱包地址": "Enter a wallet address",
     "请输入有效钱包地址": "Enter a valid wallet address",
-    "请先绑定邮箱": "Link an email first"
-
+    "请先绑定邮箱": "Link an email first",
+    "全屏播放": "Fullscreen",
+    "退出全屏": "Exit fullscreen"
 }

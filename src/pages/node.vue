@@ -7,42 +7,99 @@
         />
 
         <main class="node-main">
-            <!-- 模块一：银行卡节点主视觉 -->
-            <div class="node-hero-visual">
-                <img :src="nodeHeroFallback" alt="" />
-            </div>
+            <!-- 模块一、二：节点商品 3D 轮播。右侧露出下一张卡片，提示用户可继续切换。 -->
+            <section v-if="nodeProducts.length" class="node-carousel" :aria-label="$t('节点')">
+                <swiper
+                    ref="nodeSwiper"
+                    class="node-swiper"
+                    :options="nodeSwiperOptions"
+                    @slide-change="handleNodeSlideChange"
+                >
+                    <swiper-slide
+                        v-for="(node, index) in nodeProducts"
+                        :key="node.id"
+                        class="node-carousel-slide"
+                        @click.native="selectNode(node, index)"
+                    >
+                        <div class="node-hero-visual">
+                            <img
+                                :src="node.image || nodeHeroFallback"
+                                :alt="node.name || $t('节点')"
+                                @error="useNodeImageFallback"
+                            />
+                        </div>
 
-            <!-- 模块二：量化节点认购信息 -->
-            <section class="node-subscription-card">
-                <header class="node-subscription-header">
-                    <h1 class="node-subscription-title">{{ nodeInfo.name }}</h1>
+                        <section class="node-subscription-card">
+                            <header class="node-subscription-header">
+                                <h1 class="node-subscription-title">{{ node.name || $t('无数据') }}</h1>
 
-                    <div class="node-subscription-stock">
-                        <img src="@img/node-stock.svg" alt="" />
-                        <span class="node-subscription-stock-text">
-                            <span>{{ $t('剩余库存') }}</span>
-                            <span class="node-subscription-stock-value">{{ nodeInfo.remainingStock }}</span>
-                            <span>{{ $t('个') }}</span>
-                        </span>
-                    </div>
-                </header>
+                                <div class="node-subscription-stock">
+                                    <img src="@img/node-stock.svg" alt="" />
+                                    <span class="node-subscription-stock-text">
+                                        <span>{{ $t('剩余库存') }}</span>
+                                        <span class="node-subscription-stock-value">{{ displayNodeValue(node.remain) }}</span>
+                                        <span>{{ $t('个') }}</span>
+                                    </span>
+                                </div>
+                            </header>
 
-                <div class="node-subscription-price">
-                    <div class="node-subscription-label">{{ $t('认购价格') }}</div>
-                    <div class="node-subscription-price-value">
-                        <span>{{ nodeInfo.price }}</span>
-                        <span class="node-subscription-currency">{{ nodeInfo.currency }}</span>
-                    </div>
+                            <div class="node-subscription-price">
+                                <div class="node-subscription-label">{{ $t('认购价格') }}</div>
+                                <div class="node-subscription-price-value">
+                                    <span>{{ displayNodeValue(getNodePrice(node)) }}</span>
+                                    <span class="node-subscription-currency">{{ selectedCurrency }}</span>
+                                </div>
+                            </div>
+
+                            <button type="button" class="node-subscription-method" @click.stop="toggleCurrency">
+                                <span class="node-subscription-method-label">{{ $t('认购方式') }}</span>
+                                <span class="node-subscription-method-value">
+                                    <span>{{ selectedCurrency }}</span>
+                                    <img src="@img/node-subscribe-arrow.svg" alt="" />
+                                </span>
+                            </button>
+                        </section>
+                    </swiper-slide>
+                </swiper>
+            </section>
+
+            <!-- 接口尚未返回节点时，保留原有占位结构。 -->
+            <template v-else>
+                <div class="node-hero-visual">
+                    <img :src="nodeHeroFallback" alt="" />
                 </div>
 
-                <button type="button" class="node-subscription-method" @click="toggleCurrency">
-                    <span class="node-subscription-method-label">{{ $t('认购方式') }}</span>
-                    <span class="node-subscription-method-value">
-                        <span>{{ nodeInfo.currency }}</span>
-                        <img src="@img/node-subscribe-arrow.svg" alt="" />
-                    </span>
-                </button>
-            </section>
+                <section class="node-subscription-card">
+                    <header class="node-subscription-header">
+                        <h1 class="node-subscription-title">{{ nodeInfo.name }}</h1>
+
+                        <div class="node-subscription-stock">
+                            <img src="@img/node-stock.svg" alt="" />
+                            <span class="node-subscription-stock-text">
+                                <span>{{ $t('剩余库存') }}</span>
+                                <span class="node-subscription-stock-value">{{ nodeInfo.remainingStock }}</span>
+                                <span>{{ $t('个') }}</span>
+                            </span>
+                        </div>
+                    </header>
+
+                    <div class="node-subscription-price">
+                        <div class="node-subscription-label">{{ $t('认购价格') }}</div>
+                        <div class="node-subscription-price-value">
+                            <span>{{ nodeInfo.price }}</span>
+                            <span class="node-subscription-currency">{{ nodeInfo.currency }}</span>
+                        </div>
+                    </div>
+
+                    <button type="button" class="node-subscription-method" disabled>
+                        <span class="node-subscription-method-label">{{ $t('认购方式') }}</span>
+                        <span class="node-subscription-method-value">
+                            <span>{{ nodeInfo.currency }}</span>
+                            <img src="@img/node-subscribe-arrow.svg" alt="" />
+                        </span>
+                    </button>
+                </section>
+            </template>
 
             <!-- 模块三：节点认购操作 -->
             <section class="node-actions">
@@ -99,14 +156,27 @@ export default {
             nodeConfigLoaded: false,
             isEmailAccount: false,
             userProfileLoaded: false,
+            nodeSwiperOptions: {
+                slidesPerView: 1.1,
+                spaceBetween: 10,
+                freeMode: false,
+                grabCursor: true,
+                centeredSlides: true,
+            },
         }
     },
     computed: {
         activeNode() {
             return this.nodeProducts.find(item => item.id === this.activeNodeId) || null
         },
+        activeNodeIndex() {
+            return this.nodeProducts.findIndex(item => item.id === this.activeNodeId)
+        },
         googleNodeRequired() {
             return this.isEmailAccount && Number(this.nodeConfig.google_2fa_node_switch) === 1
+        },
+        selectedCurrency() {
+            return this.selectedCcy === 'balance_usdt' ? 'USDT' : 'AIX'
         },
         nodeInfo() {
             const node = this.activeNode
@@ -151,7 +221,11 @@ export default {
                 const res = await this.$http.get('/api/node_orders')
                 if (res.code == 200) {
                     this.nodeProducts = res.data && Array.isArray(res.data.nodes) ? res.data.nodes : []
-                    this.activeNodeId = this.nodeProducts.length ? this.nodeProducts[0].id : null
+                    const hasActiveNode = this.nodeProducts.some(item => item.id === this.activeNodeId)
+                    this.activeNodeId = hasActiveNode
+                        ? this.activeNodeId
+                        : (this.nodeProducts.length ? this.nodeProducts[0].id : null)
+                    this.$nextTick(() => this.updateNodeSwiper())
                 }
             } catch (error) {
                 console.log('节点商品加载失败', error)
@@ -170,6 +244,40 @@ export default {
         toggleCurrency() {
             if (!this.activeNode) return
             this.selectedCcy = this.selectedCcy === 'balance_usdt' ? 'balance_aix' : 'balance_usdt'
+        },
+        displayNodeValue(value) {
+            return value === undefined || value === null || value === '' ? this.$t('无数据') : value
+        },
+        getNodePrice(node) {
+            return this.selectedCcy === 'balance_usdt' ? node.usdt_amount : node.aix_stake_amount
+        },
+        useNodeImageFallback(event) {
+            const image = event.currentTarget
+            if (!image || image.dataset.fallbackApplied === '1') return
+            image.dataset.fallbackApplied = '1'
+            image.src = this.nodeHeroFallback
+        },
+        selectNode(node, index) {
+            if (!node || node.id === undefined || node.id === null) return
+            this.activeNodeId = node.id
+            const swiper = this.getNodeSwiper()
+            if (swiper && swiper.activeIndex !== index) swiper.slideTo(index)
+        },
+        getNodeSwiper() {
+            return this.$refs.nodeSwiper && this.$refs.nodeSwiper.$swiper
+        },
+        updateNodeSwiper() {
+            const swiper = this.getNodeSwiper()
+            if (!swiper) return
+            swiper.update()
+            if (this.activeNodeIndex >= 0) swiper.slideTo(this.activeNodeIndex, 0)
+        },
+        handleNodeSlideChange() {
+            const swiper = this.getNodeSwiper()
+            if (!swiper) return
+            const index = Number.isFinite(swiper.realIndex) ? swiper.realIndex : swiper.activeIndex
+            const node = this.nodeProducts[index]
+            if (node) this.activeNodeId = node.id
         },
         prepareNodeOrder() {
             if (!this.nodeConfigLoaded) {
@@ -254,7 +362,44 @@ export default {
         min-height: 1624px;
         padding: 247px 30px 290px;
 
-        // 模块一：银行卡节点主视觉
+        // 模块一、二：由 VueAwesomeSwiper 驱动的多卡片自由滑动节点轮播。
+        .node-carousel {
+            flex: 0 0 auto;
+            width: 690px;
+            max-width: 100%;
+
+            .node-swiper {
+                width: 100%;
+                padding-bottom: 8px;
+
+                /deep/ .swiper-wrapper {
+                    align-items: flex-start;
+                }
+
+                /deep/ .swiper-slide {
+                    height: auto;
+                }
+
+                .node-carousel-slide {
+                    height: auto;
+
+                    .node-hero-visual {
+                        width: 100%;
+                        height: 454px;
+
+                        img {
+                            width: 100%;
+                            height: 100%;
+                            max-width: 100%;
+                            transform: none;
+                            object-fit: cover;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 节点为空时沿用默认银行卡主视觉。
         .node-hero-visual {
             flex: 0 0 auto;
             width: 550px;
