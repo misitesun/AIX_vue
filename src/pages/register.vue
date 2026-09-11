@@ -124,6 +124,15 @@
                 {{ $t('注册') }}
             </button>
         </form>
+<!-- 
+        <button
+            v-if="showDownloadApp"
+            type="button"
+            class="register-download-app"
+            @click="goDownload"
+        >
+            {{ $t('下载APP') }}
+        </button> -->
 
         <!-- 模块三：返回邮箱登录。 -->
         <div class="register-login-link">
@@ -161,6 +170,9 @@ export default {
         }
     },
     computed: {
+        showDownloadApp() {
+            return !this.isFlutterHost()
+        },
         sendCodeText() {
             if (this.isSendingCode) return this.$t('发送中')
             if (this.codeCountdown > 0) return `${this.codeCountdown}s`
@@ -256,6 +268,12 @@ export default {
             } finally {
                 this.isSubmitting = false
             }
+        },
+        isFlutterHost() {
+            return typeof window !== 'undefined' && typeof window.__FROM_FLUTTER__ !== 'undefined'
+        },
+        goDownload() {
+            this.$router.push({ name: 'appDownload' })
         },
         goEmailLogin() {
             const query = {}
@@ -454,9 +472,29 @@ export default {
         }
     }
 
+    .register-download-app {
+        position: absolute;
+        top: 1192px;
+        left: 60px;
+        width: 630px;
+        height: 76px;
+        border: 2px solid #1261F3;
+        border-radius: 999px;
+        background: transparent;
+        color: #4C91FF;
+        font-size: 28px;
+        font-weight: 500;
+        line-height: 72px;
+        text-align: center;
+
+        &:active {
+            transform: scale(0.98);
+        }
+    }
+
     .register-login-link {
         position: absolute;
-        top: 1198px;
+        top: 1292px;
         left: 0;
         width: 750px;
         color: rgba(184, 195, 212, 0.50);

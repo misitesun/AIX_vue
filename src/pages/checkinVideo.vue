@@ -7,7 +7,6 @@
             class="checkin-video-player"
             :src="videoInfo.video_url"
             autoplay
-            muted
             loop
             playsinline
             webkit-playsinline
@@ -60,7 +59,7 @@
             v-if="hasVideo && !hasVideoError && !isPlaying && !canClose"
             type="button"
             class="checkin-video-play"
-            :aria-label="$t('观看视频进行签到')"
+            :aria-label="$t('观看视频进行打卡')"
             @click="playVideo"
         >
             <img src="@img/home-checkin-play.png" alt="" />
@@ -160,6 +159,11 @@ export default {
         playVideo() {
             const video = this.$refs.videoPlayer
             if (!video || this.canClose || this.isSubmitting) return
+
+            // 默认使用有声播放；若浏览器拦截有声自动播放，会展示播放入口供用户手动开启。
+            video.muted = false
+            video.defaultMuted = false
+            video.volume = 1
 
             const playPromise = video.play()
             if (playPromise && typeof playPromise.catch === 'function') {
@@ -317,28 +321,28 @@ export default {
             if (this.isSubmitting || !this.hasVideo || this.hasVideoError) return
 
             this.isSubmitting = true
-            // try {
-            //     const res = await this.$http.post('/api/sign_logs')
-            //     if (res.code != 200) return
+            try {
+                const res = await this.$http.post('/api/sign_logs')
+                if (res.code != 200) return
 
-            //     this.$store.commit('setCheckedIn', {
-            //         date: this.getTodayKey(),
-            //         address: this.$store.state.address || '',
-            //     })
-            //     try {
-            //         sessionStorage.setItem(CHECKIN_SUCCESS_PENDING_KEY, '1')
-            //     } catch (error) {
-            //         console.log('缓存签到成功状态失败', error)
-            //     }
-            //     // 返回页已加载或即将加载时，都能通过事件恢复签到成功弹窗。
-            //     if (typeof window !== 'undefined') {
-            //         window.dispatchEvent(new Event(CHECKIN_SUCCESS_EVENT))
-            //     }
-            // } catch (error) {
-            //     console.log('提交签到失败', error)
-            // } finally {
-            //     this.isSubmitting = false
-            // }
+                this.$store.commit('setCheckedIn', {
+                    date: this.getTodayKey(),
+                    address: this.$store.state.address || '',
+                })
+                try {
+                    sessionStorage.setItem(CHECKIN_SUCCESS_PENDING_KEY, '1')
+                } catch (error) {
+                    console.log('缓存签到成功状态失败', error)
+                }
+                // 返回页已加载或即将加载时，都能通过事件恢复签到成功弹窗。
+                if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event(CHECKIN_SUCCESS_EVENT))
+                }
+            } catch (error) {
+                console.log('提交签到失败', error)
+            } finally {
+                this.isSubmitting = false
+            }
         },
         handleVideoError(error) {
             console.log('签到视频加载失败', error)

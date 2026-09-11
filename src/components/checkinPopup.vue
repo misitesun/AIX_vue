@@ -18,7 +18,7 @@
                 <img src="@img/home-checkin-close.svg" alt="" />
             </button>
 
-            <h2 :id="titleId" class="checkin-popup-title">{{ $t('今日签到') }}</h2>
+            <h2 :id="titleId" class="checkin-popup-title">{{ $t('今日打卡') }}</h2>
 
             <!-- 公共蓝色光效分隔线，与公告弹窗保持同一视觉资源。 -->
             <div class="checkin-popup-divider">
@@ -36,13 +36,13 @@
                 <button
                     type="button"
                     class="checkin-video-trigger"
-                    :aria-label="$t('观看视频进行签到')"
+                    :aria-label="$t('观看视频进行打卡')"
                     @click="openVideo"
                 >
                     <span class="checkin-video-play">
                         <img src="@img/home-checkin-play.png" alt="" />
                     </span>
-                    <span class="checkin-video-copy">{{ $t('观看视频进行签到') }}</span>
+                    <span class="checkin-video-copy">{{ $t('观看视频进行打卡') }}</span>
                 </button>
             </div>
 

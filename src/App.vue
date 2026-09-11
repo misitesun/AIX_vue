@@ -5,7 +5,7 @@
 			<router-view class="router-view" />
 			</transition>
 		</keep-alive>
-        <FlameBackground />
+        <!-- <FlameBackground /> -->
 	</div>
 </template>
 <script>
@@ -25,6 +25,32 @@
                 localStorage.setItem('lang', 'zh-Hans')
             }
 		},
+        // iOS Safari 的地址栏会动态改变可视区域；使用 visualViewport 同步真实高度，
+        // 防止首页滚动到底部时露出应用根背景。
+        mounted() {
+            this.syncViewportHeight()
+            window.addEventListener('resize', this.syncViewportHeight)
+            window.addEventListener('orientationchange', this.syncViewportHeight)
+            if (window.visualViewport) {
+                window.visualViewport.addEventListener('resize', this.syncViewportHeight)
+            }
+        },
+        beforeDestroy() {
+            window.removeEventListener('resize', this.syncViewportHeight)
+            window.removeEventListener('orientationchange', this.syncViewportHeight)
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', this.syncViewportHeight)
+            }
+        },
+        methods: {
+            syncViewportHeight() {
+                const viewport = window.visualViewport
+                const height = viewport && viewport.height ? viewport.height : window.innerHeight
+                if (height) {
+                    document.documentElement.style.setProperty('--app-viewport-height', `${Math.round(height)}px`)
+                }
+            },
+        },
 	}
 </script>
 <style lang="less">
@@ -50,6 +76,8 @@
 		--app-danger: #FF5F57;
 		--app-success: #27C840;
 		--app-warning: #FF5100;
+		/* JS 会在运行时同步为 visualViewport.height，初始值兼容旧浏览器。 */
+		--app-viewport-height: 100vh;
 	}
 
 	*{box-sizing: border-box;}
@@ -68,7 +96,7 @@
 	}
 	
 	#app {
-		min-height: 100vh;
+		min-height: var(--app-viewport-height, 100vh);
 		background:
 			radial-gradient(circle at 88% 4%, rgba(18, 97, 243, 0.20) 0%, rgba(18, 97, 243, 0) 32%),
 			var(--app-bg);
@@ -87,7 +115,7 @@
 		.router-view {
 			position: relative;
 			z-index: 1;
-			min-height: 100vh;
+			min-height: var(--app-viewport-height, 100vh);
 		}
 
 		.df {

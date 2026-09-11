@@ -70,7 +70,7 @@
                     <span>{{ splitDecimal(performance.area).integer }}</span>
                     <span class="mine-performance-decimal">{{ splitDecimal(performance.area).decimal }}</span>
                 </div>
-                <div class="mine-performance-label">{{ $t('小区业绩(USDT)') }}</div>
+                <div class="mine-performance-label">{{ $t('社区业绩(USDT)') }}</div>
             </div>
             <span class="mine-performance-divider"></span>
             <div class="mine-performance-item">
@@ -120,8 +120,8 @@
         >
             <img src="@img/mine-deposit-banner.png" alt="" class="mine-deposit-background" />
             <span class="mine-deposit-copy">
-                <span class="mine-deposit-title">{{ $t('入金订单') }}</span>
-                <span class="mine-deposit-subtitle">{{ $t('查看入金记录与订单状态') }}</span>
+                <span class="mine-deposit-title">{{ $t('授权订单') }}</span>
+                <span class="mine-deposit-subtitle">{{ $t('查看授权记录与订单状态') }}</span>
             </span>
             <img src="@img/mine-arrow.svg" alt="" class="mine-deposit-arrow" />
                 </button>

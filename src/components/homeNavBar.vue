@@ -8,7 +8,7 @@
                 <button
                     type="button"
                     class="home-nav-bar-action home-nav-bar-checkin"
-                    :aria-label="$t('今日签到')"
+                    :aria-label="$t('今日打卡')"
                     @click="openCheckinPopup"
                 >
                     <img :src="checkinStatusIcon" alt="" />
@@ -411,17 +411,17 @@ export default {
             }
 
             // 未读红点为独立 CSS 元素，不包含在铃铛资源中。
-            &.home-nav-bar-notice::after {
-                position: absolute;
-                top: 15px;
-                left: 40px;
-                width: 10px;
-                height: 10px;
-                border-radius: 50%;
-                background: #FF0000;
-                content: '';
-                pointer-events: none;
-            }
+            // &.home-nav-bar-notice::after {
+            //     position: absolute;
+            //     top: 15px;
+            //     left: 40px;
+            //     width: 10px;
+            //     height: 10px;
+            //     border-radius: 50%;
+            //     background: #FF0000;
+            //     content: '';
+            //     pointer-events: none;
+            // }
 
             &.home-nav-bar-settings img {
                 width: 36px;

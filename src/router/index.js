@@ -47,6 +47,14 @@ const router = new Router({
                 import("@/pages/register"),
             meta: { public: true, guestOnly: true },
         },
+        // APP 下载页：无需登录即可访问。
+        {
+            path: '/download',
+            name: 'appDownload',
+            component: () =>
+                import("@/pages/download"),
+            meta: { public: true },
+        },
         // 忘记登录密码
         {
             path: '/forgot-password',

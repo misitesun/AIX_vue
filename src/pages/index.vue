@@ -110,7 +110,7 @@
 
                 <div class="plan-card-limit df-aic">
                     <span class="plan-card-limit-count df-aic-jucen">{{ plan.participated }}/{{ plan.participationLimit }}</span>
-                    <span class="plan-card-limit-text">{{ $t('限购次数') }}：{{ plan.participationLimit }}</span>
+                    <span class="plan-card-limit-text">{{ $t('授权次数') }}：{{ plan.participationLimit }}</span>
                 </div>
             </div>
 
@@ -123,13 +123,13 @@
                     <div class="plan-card-cycle">{{ $t('周期') }}·{{ plan.cycleDays }}{{ $t('天') }}</div>
                 </div>
 
-                <div class="plan-card-amount-label">{{ $t('参与金额') }}</div>
+                <div class="plan-card-amount-label">{{ $t('授权金额') }}</div>
                 <div class="plan-card-input df-aic-jusb">
                     <input
                         v-model="amount"
                         type="text"
                         inputmode="decimal"
-                        :placeholder="$t('请输入参与的金额')"
+                        :placeholder="$t('请输入授权的金额')"
                         @input="normalizeAmount"
                     />
                     <img src="@img/usdt.png" alt="USDT" />
@@ -148,18 +148,18 @@
 
                 <div class="plan-card-footer df-aic-jusb">
                     <div class="plan-card-yield">
-                        <div class="plan-card-yield-label">{{ $t('日收益') }}</div>
+                        <div class="plan-card-yield-label">{{ $t('日收益区间') }}</div>
                         <div class="plan-card-yield-value">{{ plan.dailyYield }}</div>
                     </div>
                     <button type="button" class="plan-card-submit common-btn" @click="prepareOrder">
-                        {{ $t('立即参与') }}
+                        {{ $t('立即授权') }}
                     </button>
                 </div>
             </div>
         </section>
 
         <!-- 模块四：跨系统入口横幅 -->
-        <section class="system-banner" @click="goToXSmartPay">
+        <!-- <section class="system-banner" @click="goToXSmartPay">
             <img src="@img/home-system-banner.png" alt="X-SmanrtPay" class="system-banner-bg" />
             <div class="system-banner-content">
                 <div class="system-banner-tag">{{ $t('双系统互联') }}</div>
@@ -167,7 +167,7 @@
                 <div class="system-banner-subtitle">{{ $t('链上价值·全球支付') }}</div>
                 <button type="button" class="system-banner-button">{{ $t('进入系统') }}</button>
             </div>
-        </section>
+        </section> -->
 
         <!-- 模块五：全网实时交易 -->
         <section class="transaction-section">
@@ -266,7 +266,7 @@
 
         <transaction-auth-popup
             v-if="!showGoogleBindingRequired && showOrderAuth"
-            :title="$t('确认参与')"
+            :title="$t('确认授权')"
             :google-required="googleOrderRequired"
             :loading="isSubmitting"
             @close="showOrderAuth = false"
@@ -287,7 +287,7 @@ import assetVisibilityEyeHidden from '@img/register-eye-hidden.svg'
 import { getAssetVisibility, setAssetVisibility } from '@/utils/assetVisibility'
 
 const TRANSACTION_PAGE_SIZE = 100
-const TRANSACTION_VISIBLE_COUNT = 4
+const TRANSACTION_VISIBLE_COUNT = 10
 const TRANSACTION_CAROUSEL_INTERVAL = 3000
 const TRANSACTION_REFRESH_INTERVAL = 20 * 1000
 
@@ -389,9 +389,12 @@ export default {
                     dailyYield: this.$t('无数据'),
                 }
             }
-            const rate = product.min_rate || product.max_rate
-                ? `${product.min_rate || this.$t('无数据')}-${product.max_rate || this.$t('无数据')}`
-                : (product.income_rate || this.$t('无数据'))
+            const hasRateRange = [product.min_rate, product.max_rate].some(value =>
+                value !== undefined && value !== null && value !== ''
+            )
+            const rate = hasRateRange
+                ? `${this.formatDailyYield(product.min_rate)}—${this.formatDailyYield(product.max_rate)}`
+                : this.formatDailyYield(product.income_rate)
             const purchaseCount = product.purchase_count === undefined || product.purchase_count === null
                 ? this.$t('无数据')
                 : product.purchase_count
@@ -446,6 +449,12 @@ export default {
             window.open(process.env.VUE_APP_XSmartPay_url, '_blank')
         },
 
+        formatDailyYield(value) {
+            if (value === undefined || value === null || value === '') return this.$t('无数据')
+            const rate = String(value).trim()
+            if (!rate) return this.$t('无数据')
+            return rate.includes('%') ? rate : `${rate}%`
+        },
         normalizeAmount(event) {
             let value = String(event.target.value || '').replace(/[^\d.]/g, '')
             const decimalIndex = value.indexOf('.')
@@ -739,7 +748,7 @@ export default {
             const minAmount = Number(this.selectedProduct.min_amount)
             const maxAmount = Number(this.selectedProduct.max_amount)
             if (!this.amount || !Number.isFinite(amount) || amount <= 0) {
-                this.$toast(this.$t('请输入有效参与金额'))
+                this.$toast(this.$t('请输入有效授权金额'))
                 return
             }
             if (amount < minAmount || (maxAmount > 0 && amount > maxAmount)) {
@@ -797,9 +806,10 @@ export default {
     display: flex;
     flex-direction: column;
     width: 750px;
-    min-height: 100vh;
+    min-height: var(--app-viewport-height, 100dvh);
     margin: 0 auto;
-    padding-bottom: 168px;
+    // 预留悬浮 TabBar 的高度，并在刘海屏/原生容器中避开底部安全区。
+    padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
     overflow-x: hidden;
     background: #05070C;
     color: #FFFFFF;
@@ -1475,7 +1485,7 @@ export default {
         align-items: center;
         justify-content: center;
         width: 750px;
-        height: 100vh;
+        height: var(--app-viewport-height, 100dvh);
         padding: 30px;
         transform: translateX(-50%);
         background: rgba(0, 3, 12, 0.82);

@@ -99,3 +99,54 @@ final result: passed
 - The bind-wallet API requires a Google verification code. The page supplies that field; the account should already have Google 2FA available before the request can succeed.
 
 final result: blocked
+
+---
+
+# App download entry and download page QA
+
+- Source visual truth (registration): `/private/var/folders/py/18yf1bmx1w9f1z5fx19j4nm80000gn/T/codex-clipboard-8f3eb79d-2b63-4165-ab5a-ce2e4347e8a8.png` (940 × 1714 px).
+- Source visual truth (provided download assets): `/private/var/folders/py/18yf1bmx1w9f1z5fx19j4nm80000gn/T/codex-clipboard-4d4f1416-b2b7-49a1-b84f-99b48eba672a.png` (694 × 290 px).
+- Implementation assets: `src/assets/img/qidong.jpg` (750 × 1624 px), `down2.png`, and `down3.png` (510 × 102 px each).
+- Implementation routes: `/register` and public `/download`.
+- Intended state: logged out Web host shows the transparent blue-outline registration entry; the entry is hidden whenever `window.__FROM_FLUTTER__` exists. The download page keeps both supplied image buttons fixed above the bottom safe area.
+- Local preview: `http://127.0.0.1:4173/aix/` was started and opened in Codex; a browser-rendered screenshot cannot be captured or inspected in this tool context.
+
+**Findings**
+
+- [P1] Visual comparison is blocked pending a browser-rendered capture.
+  Location: registration download entry and download page.
+  Evidence: source screenshots and supplied raster assets are available, and the production build passes, but this session cannot capture or inspect a rendered browser screenshot at the matched mobile viewport.
+  Impact: the exact bottom-safe-area offset, registration spacing, image crop, and button state cannot be visually accepted from source code alone.
+  Fix: open the local preview in a browser-enabled session, capture the same mobile viewport, compare it with the supplied reference, and iterate on any P0–P2 differences.
+
+**Required fidelity surfaces**
+
+- Fonts and typography: blocked pending a rendered capture.
+- Spacing and layout rhythm: asset dimensions and fixed offsets are matched in code; visual confirmation is blocked.
+- Colors and visual tokens: supplied background and button raster assets are used directly; visual confirmation is blocked.
+- Image quality and asset fidelity: `qidong.jpg`, `down2.png`, and `down3.png` are used directly without recreation; visual confirmation is blocked.
+- Copy and content: download entry and missing-link feedback are localized in all nine language packs.
+
+**Full-view and focused comparison evidence**
+
+- Source reference was inspected from the supplied screenshots. No browser-rendered implementation image was available for side-by-side or focused-region comparison.
+
+**Implementation Checklist**
+
+- [x] Added the Web-only registration download entry.
+- [x] Hide the entry when `window.__FROM_FLUTTER__` exists.
+- [x] Added public `/download` route and page using supplied image assets.
+- [x] Fixed Android and iPhone image buttons above the bottom safe area.
+- [x] Added localized download copy and configurable platform URLs.
+- [x] Ran `npm run build` successfully.
+- [ ] Capture and compare registration and download pages at the intended mobile viewport.
+
+**Open Questions**
+
+- Android and iPhone package URLs were not supplied. `.env.production` contains blank `VUE_APP_ANDROID_DOWNLOAD_URL` and `VUE_APP_IOS_DOWNLOAD_URL` placeholders; buttons show a localized configuration message until these are set.
+
+**Comparison history**
+
+1. Initial pass: blocked before visual comparison because a browser-rendered screenshot cannot be captured in this session.
+
+final result: blocked

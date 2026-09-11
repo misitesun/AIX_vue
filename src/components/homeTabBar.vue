@@ -63,7 +63,8 @@ export default {
 .home-tab-bar {
     position: fixed;
     left: 50%;
-    bottom: 30px;
+    // 兼容 iPhone 底部安全区；Safari 地址栏变化由应用层动态视口高度处理。
+    bottom: calc(30px + env(safe-area-inset-bottom, 0px));
     z-index: 99;
     width: 690px;
     height: 98px;

@@ -2,7 +2,7 @@
     <div class="deposit-orders-page">
         <!-- 公共模块：固定顶部返回导航，H5 页面不重复实现系统状态栏 -->
         <van-nav-bar
-            :title="$t('入金订单')"
+            :title="$t('授权订单')"
             :fixed="true"
             :placeholder="true"
             :border="false"

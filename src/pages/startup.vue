@@ -75,8 +75,15 @@ export default {
         window.clearTimeout(this.emailFormTimer)
     },
     methods: {
-        isWalletEnvironment() {
+        isWalletAutoDetectionEnabled() {
+            const value = String(process.env.VUE_APP_ENABLE_WALLET_ENV_DETECTION || 'true').trim().toLowerCase()
+            return !['false', '0', 'off', 'no'].includes(value)
+        },
+        hasWalletProvider() {
             return typeof window !== 'undefined' && Boolean(window.ethereum)
+        },
+        isWalletEnvironment() {
+            return this.isWalletAutoDetectionEnabled() && this.hasWalletProvider()
         },
         hasLoginToken() {
             return Boolean(localStorage.getItem('token'))
@@ -157,7 +164,7 @@ export default {
         },
         async initializeWalletLogin() {
             if (this.isWalletLoggingIn) return
-            if (!this.isWalletEnvironment()) {
+            if (!this.hasWalletProvider()) {
                 this.walletError = true
                 this.$toast(this.$t('未检测到Web3钱包，请先安装MetaMask'))
                 return
