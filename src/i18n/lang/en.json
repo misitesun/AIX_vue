@@ -450,5 +450,15 @@
     "授权订单": "Authorization Orders",
     "查看授权记录与订单状态": "View authorization records and order status",
     "下载APP": "Download App",
-    "下载地址暂未配置": "Download link is not configured yet"
+    "下载地址暂未配置": "Download link is not configured yet",
+    "切换账号": "Switch account",
+    "账号": "Account",
+    "当前已登录": "Currently signed in",
+    "切换": "Switch",
+    "暂无已保存账号": "No saved accounts",
+    "账号切换成功": "Account switched successfully",
+    "账号凭据已失效，请重新登录": "Saved credentials have expired. Please sign in again",
+    "记录账号密码": "Remember account and password",
+    "添加账号": "Add account",
+    "划转功能仅支持 AIX-Quant 向 XSmartPay 划转资产，不支持AIX-Quant 内部互转。": "Transfers are supported only from AIX-Quant to XSmartPay; transfers within AIX-Quant are not supported."
 }

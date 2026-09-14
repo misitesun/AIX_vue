@@ -5,6 +5,21 @@
             'email-login-page-embedded': embedded,
         }"
     >
+        <van-nav-bar
+            v-if="isAddAccountMode"
+            :title="$t('添加账号')"
+            :fixed="true"
+            :border="false"
+            z-index="99"
+            @click-left="goBackFromAddAccount"
+        >
+            <template #left>
+                <span class="email-login-back df-aic-jucen">
+                    <van-icon name="arrow-left" size="20" color="#fff" />
+                </span>
+            </template>
+        </van-nav-bar>
+
         <div class="email-login-stage">
         <!-- 模块一：Figma 原始深蓝背景。系统状态栏由宿主环境提供，页面内不重复绘制。 -->
         <img
@@ -68,6 +83,17 @@
                 >
                     <img :src="showPassword ? eyeHidden : eyeVisible" alt="" />
                 </button>
+            </label>
+
+            <label
+                class="email-login-remember df-aic"
+                :class="{ 'is-checked': rememberCredentials }"
+            >
+                <input v-model="rememberCredentials" type="checkbox" />
+                <span class="email-login-remember-box df-aic-jucen" aria-hidden="true">
+                    <van-icon v-if="rememberCredentials" name="success" size="14" color="#FFFFFF" />
+                </span>
+                <span>{{ $t('记录账号密码') }}</span>
             </label>
 
             <button type="button" class="email-login-forgot df-aic" @click="goForgotPassword">
@@ -149,6 +175,10 @@
 <script>
 import eyeVisible from '@img/register-eye-visible.svg'
 import eyeHidden from '@img/register-eye-hidden.svg'
+import {
+    markCurrentEmailAccount,
+    saveEmailAccountCredentials,
+} from '@/utils/accountCredentials'
 
 export default {
     name: 'EmailLogin',
@@ -172,14 +202,27 @@ export default {
             showPassword: false,
             showGoogleVerification: false,
             isSubmitting: false,
+            rememberCredentials: false,
             eyeVisible,
             eyeHidden,
         }
     },
+    computed: {
+        isAddAccountMode() {
+            return !this.embedded
+                && this.$route
+                && this.$route.name === 'login'
+                && String(this.$route.query.addAccount || '') === '1'
+        },
+    },
     mounted() {
-        localStorage.removeItem('token')
-        localStorage.removeItem('address')
-        this.$store.commit('setAddress', '')
+        this.rememberCredentials = this.isAddAccountMode
+        // 添加账号时先保留当前会话，返回切换账号页不会导致原账号退出。
+        if (!this.isAddAccountMode) {
+            localStorage.removeItem('token')
+            localStorage.removeItem('address')
+            this.$store.commit('setAddress', '')
+        }
         this.saveReferrer()
     },
     methods: {
@@ -215,9 +258,22 @@ export default {
             if (googleCode) payload.google_code = googleCode
             return payload
         },
-        completeEmailLogin(res) {
+        async completeEmailLogin(res) {
             if (!(res.code == 200 && res.data && res.data.token)) return false
             localStorage.setItem('token', res.data.token)
+            localStorage.removeItem('address')
+            this.$store.commit('setAddress', '')
+
+            if (this.rememberCredentials) {
+                try {
+                    await saveEmailAccountCredentials(this.email, this.password)
+                    markCurrentEmailAccount(this.email)
+                } catch (error) {
+                    // 凭据保险库不可用不应阻塞本次正常登录。
+                    console.log('保存切换账号凭据失败', error)
+                }
+            }
+
             this.$router.replace(this.getSafeRedirect() || '/index')
             return true
         },
@@ -275,8 +331,12 @@ export default {
                 const res = await this.$http.post(
                     '/api/auth/email_login',
                     this.createEmailLoginPayload(this.googleCode),
+                    {
+                        skipAuth: true,
+                        skipUnauthorizedRedirect: true,
+                    },
                 )
-                if (this.completeEmailLogin(res)) return
+                if (await this.completeEmailLogin(res)) return
                 if (this.isCredentialError(res.data)) {
                     this.closeGoogleVerification()
                 }
@@ -304,6 +364,9 @@ export default {
         },
         goForgotPassword() {
             this.$router.push({ name: 'forgotPassword', query: this.getAuthQuery() })
+        },
+        goBackFromAddAccount() {
+            this.$router.back()
         },
         goRegister() {
             this.$router.push({
@@ -356,6 +419,31 @@ export default {
         background: transparent;
         color: inherit;
         font: inherit;
+    }
+
+    /deep/ .van-nav-bar,
+    /deep/ .van-nav-bar__content {
+        height: 88px;
+    }
+
+    /deep/ .van-nav-bar {
+        background: rgba(0, 0, 0, 0.60) !important;
+
+        .van-nav-bar__title {
+            color: #FFFFFF;
+            font-size: 32px;
+            font-weight: 600;
+        }
+
+        .van-nav-bar__left {
+            left: 30px;
+            padding: 0;
+        }
+    }
+
+    .email-login-back {
+        width: 44px;
+        height: 44px;
     }
 
     .email-login-background {
@@ -489,6 +577,47 @@ export default {
             img {
                 width: 24px;
                 height: 24px;
+            }
+        }
+
+        .email-login-remember {
+            position: absolute;
+            top: 688px;
+            left: 60px;
+            height: 34px;
+            gap: 12px;
+            color: rgba(184, 195, 212, 0.80);
+            font-size: 24px;
+            line-height: 34px;
+            cursor: pointer;
+            user-select: none;
+
+            input {
+                position: absolute;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
+                opacity: 0;
+                pointer-events: none;
+            }
+
+            .email-login-remember-box {
+                width: 28px;
+                height: 28px;
+                flex: 0 0 28px;
+                box-sizing: border-box;
+                border: 2px solid rgba(184, 195, 212, 0.68);
+                border-radius: 6px;
+                background: rgba(255, 255, 255, 0.06);
+            }
+
+            &.is-checked {
+                color: #FFFFFF;
+
+                .email-login-remember-box {
+                    border-color: #1261F3;
+                    background: #1261F3;
+                }
             }
         }
 

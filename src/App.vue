@@ -5,6 +5,25 @@
 			<router-view class="router-view" />
 			</transition>
 		</keep-alive>
+		<!-- 全局账号安全门禁：邮箱和钱包登录均必须先绑定谷歌验证器。 -->
+		<div
+			v-if="googleBindingRequired"
+			class="app-google-binding-required-overlay"
+			role="dialog"
+			aria-modal="true"
+			@touchmove.prevent
+		>
+			<section class="app-google-binding-required-panel">
+				<span class="app-google-binding-required-icon df-aic-jucen">
+					<van-icon name="shield-o" size="48" color="#4C91FF" />
+				</span>
+				<h2>{{ $t('谷歌验证器未绑定') }}</h2>
+				<p>{{ $t('为了保障您的账户安全，请先绑定谷歌验证器后继续使用') }}</p>
+				<button type="button" @click="goBindGoogleAuthenticator">
+					{{ $t('立即绑定') }}
+				</button>
+			</section>
+		</div>
         <!-- <FlameBackground /> -->
 	</div>
 </template>
@@ -18,12 +37,31 @@
 		data() {
 			return {
 				keepAliveInclude: [],
+				googleBindingRequired: false,
+				googleBindingRequestId: 0,
+				previousBodyOverflow: '',
 			}
 		},
 		created() {
             if(!localStorage.getItem('lang')) {
                 localStorage.setItem('lang', 'zh-Hans')
             }
+		},
+		watch: {
+			'$route': {
+				immediate: true,
+				handler() {
+					this.checkGoogleBindingRequirement()
+				},
+			},
+			googleBindingRequired(value) {
+				if (value) {
+					this.previousBodyOverflow = document.body.style.overflow
+					document.body.style.overflow = 'hidden'
+					return
+				}
+				document.body.style.overflow = this.previousBodyOverflow
+			},
 		},
         // iOS Safari 的地址栏会动态改变可视区域；使用 visualViewport 同步真实高度，
         // 防止首页滚动到底部时露出应用根背景。
@@ -36,6 +74,8 @@
             }
         },
         beforeDestroy() {
+			this.googleBindingRequestId += 1
+			document.body.style.overflow = this.previousBodyOverflow
             window.removeEventListener('resize', this.syncViewportHeight)
             window.removeEventListener('orientationchange', this.syncViewportHeight)
             if (window.visualViewport) {
@@ -43,6 +83,44 @@
             }
         },
         methods: {
+			async checkGoogleBindingRequirement() {
+				const requestId = ++this.googleBindingRequestId
+				const route = this.$route
+				const hasToken = Boolean(localStorage.getItem('token'))
+				const isPublicRoute = route.matched.some(record => record.meta && record.meta.public)
+				const isGoogleSetupRoute = route.name === 'googleAuthenticator'
+
+				if (!hasToken || isPublicRoute || isGoogleSetupRoute) {
+					this.googleBindingRequired = false
+					return
+				}
+
+				const tokenAtRequest = localStorage.getItem('token')
+				try {
+					const res = await this.$http.get('/api/users/my')
+					if (requestId !== this.googleBindingRequestId) return
+					if (tokenAtRequest !== localStorage.getItem('token')) return
+					if (res.code == 200 && res.data) {
+						const enabled = res.data.google_2fa_enabled
+						const isGoogleBound = enabled === true
+							|| enabled === 1
+							|| enabled === '1'
+							|| enabled === 'true'
+						this.googleBindingRequired = !isGoogleBound
+					}
+				} catch (error) {
+					if (requestId === this.googleBindingRequestId) {
+						this.googleBindingRequired = false
+					}
+					console.log('全局谷歌验证器绑定状态加载失败', error)
+				}
+			},
+			goBindGoogleAuthenticator() {
+				this.$router.push({
+					name: 'googleAuthenticator',
+					query: { forced: '1' },
+				})
+			},
             syncViewportHeight() {
                 const viewport = window.visualViewport
                 const height = viewport && viewport.height ? viewport.height : window.innerHeight
@@ -353,5 +431,74 @@
         }
 
     }
+	.app-google-binding-required-overlay {
+		position: fixed;
+		top: 0;
+		left: 50%;
+		z-index: 1000;
+		display: flex;
+		width: 750px;
+		height: var(--app-viewport-height, 100dvh);
+		align-items: center;
+		justify-content: center;
+		padding: 30px;
+		transform: translateX(-50%);
+		background: rgba(0, 3, 12, 0.82);
+		backdrop-filter: blur(14px);
+		-webkit-backdrop-filter: blur(14px);
+
+		.app-google-binding-required-panel {
+			width: 630px;
+			padding: 64px 50px 50px;
+			border: 2px solid #1B6CFF;
+			border-radius: 36px;
+			background: linear-gradient(180deg, rgba(7, 27, 67, 0.98) 0%, rgba(1, 10, 31, 0.98) 100%);
+			box-shadow: 0 22px 70px rgba(0, 74, 255, 0.28);
+			text-align: center;
+
+			.app-google-binding-required-icon {
+				width: 112px;
+				height: 112px;
+				margin: 0 auto 34px;
+				border: 2px solid rgba(76, 145, 255, 0.72);
+				border-radius: 50%;
+				background: radial-gradient(circle, rgba(36, 116, 255, 0.28) 0%, rgba(3, 18, 49, 0.92) 72%);
+				box-shadow: 0 0 32px rgba(46, 132, 255, 0.42);
+			}
+
+			h2 {
+				margin: 0;
+				color: #FFFFFF;
+				font-size: 38px;
+				font-weight: 600;
+				line-height: 54px;
+			}
+
+			p {
+				margin: 28px 0 46px;
+				color: #AAB7CD;
+				font-size: 26px;
+				line-height: 42px;
+			}
+
+			button {
+				width: 530px;
+				height: 88px;
+				border: 0;
+				border-radius: 999px;
+				background: linear-gradient(90deg, #1261F3 0%, #287BFF 100%);
+				box-shadow: 0 12px 28px rgba(18, 97, 243, 0.28);
+				color: #FFFFFF;
+				font-size: 30px;
+				font-weight: 600;
+				line-height: 42px;
+
+				&:active {
+					transform: scale(0.98);
+				}
+			}
+		}
+	}
+
 	
 </style>

@@ -106,7 +106,35 @@
                 </div>
             </section>
 
-            <!-- 模块四：提现主操作 -->
+            <!-- 模块四：支付密码始终由页面收集，谷歌验证仅按后台状态额外弹出。 -->
+            <section class="withdraw-address-module withdraw-pay-password-module">
+                <label for="withdraw-pay-password" class="withdraw-amount-label">{{ $t('支付密码') }}</label>
+                <div class="withdraw-address-field common-input-focus">
+                    <input
+                        id="withdraw-pay-password"
+                        v-model="payPassword"
+                        :type="showPayPassword ? 'text' : 'password'"
+                        inputmode="numeric"
+                        maxlength="6"
+                        autocomplete="off"
+                        :placeholder="$t('请输入支付密码')"
+                        :aria-label="$t('支付密码')"
+                        aria-required="true"
+                        @input="normalizePayPassword"
+                    />
+                    <button
+                        type="button"
+                        class="withdraw-password-toggle df-aic-jucen"
+                        :aria-label="$t('显示或隐藏支付密码')"
+                        :aria-pressed="showPayPassword"
+                        @click="showPayPassword = !showPayPassword"
+                    >
+                        <img :src="showPayPassword ? eyeHidden : eyeVisible" alt="" />
+                    </button>
+                </div>
+            </section>
+
+            <!-- 模块五：提现主操作 -->
             <button type="button" class="withdraw-confirm" @click="prepareWithdraw">
                 {{ $t('提现') }}
             </button>
@@ -132,11 +160,12 @@
             @select="selectChain"
         />
         <transaction-auth-popup
-            v-if="showWithdrawAuth"
-            :title="$t('确认提现')"
-            :google-required="googleRequired"
+            v-if="showWithdrawGoogleVerification"
+            :title="$t('谷歌验证码验证')"
+            :google-required="true"
+            :pay-required="false"
             :loading="isSubmitting"
-            @close="showWithdrawAuth = false"
+            @close="showWithdrawGoogleVerification = false"
             @confirm="submitWithdraw"
         />
     </div>
@@ -145,6 +174,8 @@
 <script>
 import TransactionAuthPopup from '@/components/transactionAuthPopup'
 import { ethers } from 'ethers'
+import eyeVisible from '@img/register-eye-visible.svg'
+import eyeHidden from '@img/register-eye-hidden.svg'
 
 const WITHDRAW_COINS = [
     {
@@ -184,7 +215,9 @@ export default {
         return {
             address: '',
             amount: '',
-            showWithdrawAuth: false,
+            payPassword: '',
+            showPayPassword: false,
+            showWithdrawGoogleVerification: false,
             isSubmitting: false,
             showCoinSelector: false,
             showChainSelector: false,
@@ -194,8 +227,12 @@ export default {
             },
             selectedChain: '',
             withdrawConfig: {},
+            hasBoundEmail: false,
+            userProfileLoaded: false,
             coinActions: WITHDRAW_COINS.map(item => ({ ...item, balance: this.$t('无数据') })),
             chainActions: WITHDRAW_CHAINS.map(item => ({ ...item })),
+            eyeVisible,
+            eyeHidden,
         }
     },
     computed: {
@@ -225,6 +262,18 @@ export default {
         loadWithdrawData() {
             this.loadBalances()
             this.loadWithdrawConfig()
+            this.loadUserProfile()
+        },
+        async loadUserProfile() {
+            try {
+                const res = await this.$http.get('/api/users/my')
+                if (res.code == 200 && res.data) {
+                    this.hasBoundEmail = Boolean(String(res.data.email || '').trim())
+                    this.userProfileLoaded = true
+                }
+            } catch (error) {
+                console.log('提现页账户信息加载失败', error)
+            }
         },
         async loadBalances() {
             try {
@@ -282,12 +331,23 @@ export default {
 
             this.amount = value
         },
+        normalizePayPassword(event) {
+            this.payPassword = String(event.target.value || '').replace(/\D/g, '').slice(0, 6)
+        },
         fillAllAmount() {
             this.amount = this.selectedCoin.balance
         },
         prepareWithdraw() {
             const amountNumber = Number(this.amount)
             const balanceNumber = Number(this.selectedCoin.balance)
+            if (!this.userProfileLoaded) {
+                this.$toast(this.$t('账户信息加载中，请稍后'))
+                return
+            }
+            if (!this.hasBoundEmail) {
+                this.promptBindEmail()
+                return
+            }
 
             if (!this.selectedCoinConfig.enabled) {
                 this.$toast(this.$t('当前币种暂未开放提现'))
@@ -322,9 +382,17 @@ export default {
                 this.$toast(this.$t('提现数量低于最低限额'))
                 return
             }
-            this.showWithdrawAuth = true
+            if (!/^\d{6}$/.test(this.payPassword)) {
+                this.$toast(this.$t('支付密码必须为6位数字'))
+                return
+            }
+            if (this.googleRequired) {
+                this.showWithdrawGoogleVerification = true
+                return
+            }
+            this.submitWithdraw()
         },
-        async submitWithdraw(auth) {
+        async submitWithdraw(auth = {}) {
             if (this.isSubmitting) return
             this.isSubmitting = true
             try {
@@ -332,13 +400,15 @@ export default {
                     ccy: this.selectedCoin.ccy,
                     address: this.address,
                     amount: this.amount,
-                    pay_password: auth.pay_password,
-                    google_code: auth.google_code,
+                    pay_password: this.payPassword,
+                    ...(auth.google_code ? { google_code: auth.google_code } : {}),
                 })
                 if (res.code == 200) {
-                    this.showWithdrawAuth = false
+                    this.showWithdrawGoogleVerification = false
                     this.amount = ''
                     this.address = ''
+                    this.payPassword = ''
+                    this.showPayPassword = false
                     this.$messageTip.success(this.$t('提现申请已提交'))
                     this.loadBalances()
                 }
@@ -347,6 +417,17 @@ export default {
             } finally {
                 this.isSubmitting = false
             }
+        },
+        promptBindEmail() {
+            this.$dialog.confirm({
+                title: this.$t('绑定邮箱'),
+                message: this.$t('请先绑定邮箱'),
+                confirmButtonText: this.$t('立即绑定'),
+                cancelButtonText: this.$t('取消'),
+                showCancelButton: true,
+            }).then(() => {
+                this.$router.push({ name: 'bindEmail' })
+            }).catch(() => {})
         },
     },
 }
@@ -573,6 +654,10 @@ export default {
             left: 30px;
             width: 690px;
 
+            &.withdraw-pay-password-module {
+                top: 780px;
+            }
+
             .withdraw-amount-label {
                 display: block;
                 margin-bottom: 20px;
@@ -591,7 +676,9 @@ export default {
                 background: rgba(255, 255, 255, 0.10);
 
                 input {
-                    width: 100%;
+                    min-width: 0;
+                    width: auto;
+                    flex: 1 1 auto;
                     caret-color: #4C91FF;
                     font-size: 28px;
 
@@ -599,13 +686,25 @@ export default {
                         color: rgba(184, 195, 212, 0.50);
                     }
                 }
+
+                .withdraw-password-toggle {
+                    width: 40px;
+                    height: 103px;
+                    margin-left: 8px;
+                    flex: 0 0 40px;
+
+                    img {
+                        width: 32px;
+                        height: 32px;
+                    }
+                }
             }
         }
 
-        // 模块四：提现主按钮
+        // 模块五：提现主按钮
         .withdraw-confirm {
             position: absolute;
-            top: 790px;
+            top: 982px;
             left: 30px;
             width: 690px;
             height: 88px;

@@ -450,5 +450,15 @@
     "授权订单": "Đơn ủy quyền",
     "查看授权记录与订单状态": "Xem lịch sử ủy quyền và trạng thái đơn",
     "下载APP": "Tải ứng dụng",
-    "下载地址暂未配置": "Chưa cấu hình liên kết tải xuống"
+    "下载地址暂未配置": "Chưa cấu hình liên kết tải xuống",
+    "切换账号": "Chuyển tài khoản",
+    "账号": "Tài khoản",
+    "当前已登录": "Đang đăng nhập",
+    "切换": "Chuyển",
+    "暂无已保存账号": "Chưa có tài khoản đã lưu",
+    "账号切换成功": "Đã chuyển tài khoản",
+    "账号凭据已失效，请重新登录": "Thông tin đăng nhập đã lưu không còn hợp lệ. Vui lòng đăng nhập lại",
+    "记录账号密码": "Lưu tài khoản và mật khẩu",
+    "添加账号": "Thêm tài khoản",
+    "划转功能仅支持 AIX-Quant 向 XSmartPay 划转资产，不支持AIX-Quant 内部互转。": "Chức năng chuyển chỉ hỗ trợ chuyển tài sản từ AIX-Quant sang XSmartPay và không hỗ trợ chuyển nội bộ trong AIX-Quant."
 }

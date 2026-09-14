@@ -78,10 +78,10 @@ axios.interceptors.request.use(config => {
         delete config.headers['content-type']
         delete config.headers['Content-Type']
     }
-    if (localStorage.getItem('token')) {
+    if (localStorage.getItem('token') && !config.skipAuth) {
         config.headers['Authorization'] = 'Bearer ' + localStorage.getItem('token');
     }
-    if (localStorage.getItem('address')) {
+    if (localStorage.getItem('address') && !config.skipAuth) {
         config.headers['address'] = store.state.address ? store.state.address : localStorage.getItem('address');
     }
     return config;

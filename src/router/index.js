@@ -93,6 +93,14 @@ const router = new Router({
                 import("@/pages/accountBinding"),
             props: { bindingType: 'address' },
         },
+        // 设置 - 切换已保存的邮箱账号
+        {
+            path: '/settings/accounts',
+            name: 'switchAccount',
+            component: () =>
+                import("@/pages/switchAccount"),
+        },
+
         // 首页
         {
             path: '/index',
@@ -229,10 +237,12 @@ router.beforeEach((to, from, next) => {
     const hasToken = Boolean(localStorage.getItem('token'))
     const isPublicRoute = to.matched.some(record => record.meta && record.meta.public)
     const isGuestOnlyRoute = to.matched.some(record => record.meta && record.meta.guestOnly)
+    const isAddAccountLogin = to.name === 'login'
+        && String(to.query.addAccount || '') === '1'
 
     if (hasToken) {
         // 已登录用户不再进入登录、注册和忘记密码页面。
-        if (isGuestOnlyRoute) {
+        if (isGuestOnlyRoute && !isAddAccountLogin) {
             next({ name: 'index' })
             return
         }

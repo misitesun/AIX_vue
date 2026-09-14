@@ -85,10 +85,44 @@
                 </div>
             </section>
 
-            <!-- 模块四：确认划转 -->
+            <!-- 模块四：支付密码始终由页面收集，谷歌验证仅按后台状态额外弹出。 -->
+            <section class="transfer-field-module transfer-pay-password-module">
+                <label for="transfer-pay-password" class="transfer-field-label">{{ $t('支付密码') }}</label>
+                <div class="transfer-field common-input-focus">
+                    <img src="@img/asset-transfer-input.svg" alt="" class="transfer-field-background" />
+                    <input
+                        id="transfer-pay-password"
+                        v-model="payPassword"
+                        :type="showPayPassword ? 'text' : 'password'"
+                        inputmode="numeric"
+                        maxlength="6"
+                        autocomplete="off"
+                        class="transfer-field-input transfer-pay-password-input"
+                        :placeholder="$t('请输入支付密码')"
+                        :aria-label="$t('支付密码')"
+                        aria-required="true"
+                        @input="normalizePayPassword"
+                    />
+                    <button
+                        type="button"
+                        class="transfer-password-toggle df-aic-jucen"
+                        :aria-label="$t('显示或隐藏支付密码')"
+                        :aria-pressed="showPayPassword"
+                        @click="showPayPassword = !showPayPassword"
+                    >
+                        <img :src="showPayPassword ? eyeHidden : eyeVisible" alt="" />
+                    </button>
+                </div>
+            </section>
+
+            <!-- 模块五：确认划转 -->
             <button type="button" class="transfer-confirm" @click="prepareTransfer">
                 {{ $t('确认') }}
             </button>
+
+            <p class="transfer-notice">
+                {{ $t('划转功能仅支持 AIX-Quant 向 XSmartPay 划转资产，不支持AIX-Quant 内部互转。') }}
+            </p>
         </main>
 
         <!-- 资产选择器：最小默认集合，后续可直接替换成接口币种配置 -->
@@ -102,11 +136,12 @@
             @select="selectAsset"
         />
         <transaction-auth-popup
-            v-if="showTransferAuth"
-            :title="$t('确认划转')"
-            :google-required="googleRequired"
+            v-if="showTransferGoogleVerification"
+            :title="$t('谷歌验证码验证')"
+            :google-required="true"
+            :pay-required="false"
             :loading="isSubmitting"
-            @close="showTransferAuth = false"
+            @close="showTransferGoogleVerification = false"
             @confirm="submitTransfer"
         />
     </div>
@@ -114,13 +149,24 @@
 
 <script>
 import TransactionAuthPopup from '@/components/transactionAuthPopup'
+import eyeVisible from '@img/register-eye-visible.svg'
+import eyeHidden from '@img/register-eye-hidden.svg'
 
 const TRANSFER_ASSETS = [
     {
         name: 'AIX',
         value: 'AIX',
         symbol: 'AIX',
+        ccy: 'balance_aix',
         balanceField: 'balance_aix',
+        balance: '',
+    },
+    {
+        name: 'USDT',
+        value: 'USDT',
+        symbol: 'USDT',
+        ccy: 'balance_usdt',
+        balanceField: 'balance_usdt',
         balance: '',
     },
 ]
@@ -137,10 +183,14 @@ export default {
         return {
             address: '',
             amount: '',
-            showTransferAuth: false,
+            payPassword: '',
+            showPayPassword: false,
+            showTransferGoogleVerification: false,
             isSubmitting: false,
             showAssetSelector: false,
             transferConfig: {},
+            hasBoundEmail: false,
+            userProfileLoaded: false,
             selectedAsset: {
                 ...routeAsset,
                 balance: this.$t('无数据'),
@@ -149,6 +199,8 @@ export default {
                 ...item,
                 balance: this.$t('无数据'),
             })),
+            eyeVisible,
+            eyeHidden,
         }
     },
     computed: {
@@ -156,7 +208,7 @@ export default {
             return Number(this.transferConfig.google_2fa_transfer_switch) === 1
         },
         assetSelectorActions() {
-            return this.withSelectedAction(this.assetActions, this.selectedAsset.symbol)
+            return this.withSelectedAction(this.assetActions, this.selectedAsset.value)
         },
     },
     mounted() {
@@ -166,6 +218,18 @@ export default {
         loadTransferData() {
             this.loadBalance()
             this.loadTransferConfig()
+            this.loadUserProfile()
+        },
+        async loadUserProfile() {
+            try {
+                const res = await this.$http.get('/api/users/my')
+                if (res.code == 200 && res.data) {
+                    this.hasBoundEmail = Boolean(String(res.data.email || '').trim())
+                    this.userProfileLoaded = true
+                }
+            } catch (error) {
+                console.log('划转页账户信息加载失败', error)
+            }
         },
         async loadBalance() {
             try {
@@ -175,7 +239,8 @@ export default {
                         ...item,
                         balance: res.data[item.balanceField] || this.$t('无数据'),
                     }))
-                    this.selectedAsset = { ...this.assetActions[0] }
+                    const currentAsset = this.assetActions.find(item => item.value === this.selectedAsset.value)
+                    this.selectedAsset = { ...(currentAsset || this.assetActions[0]) }
                 }
             } catch (error) {
                 console.log('划转余额加载失败', error)
@@ -219,12 +284,23 @@ export default {
 
             this.amount = value
         },
+        normalizePayPassword(event) {
+            this.payPassword = String(event.target.value || '').replace(/\D/g, '').slice(0, 6)
+        },
         fillAllAmount() {
             this.amount = this.selectedAsset.balance
         },
         prepareTransfer() {
             const amountNumber = Number(this.amount)
             const balanceNumber = Number(this.selectedAsset.balance)
+            if (!this.userProfileLoaded) {
+                this.$toast(this.$t('账户信息加载中，请稍后'))
+                return
+            }
+            if (!this.hasBoundEmail) {
+                this.promptBindEmail()
+                return
+            }
 
             if (Number(this.transferConfig.transfer_switch) !== 1) {
                 this.$toast(this.$t('暂未开放划转'))
@@ -244,27 +320,38 @@ export default {
                 this.$toast(this.$t('划转数量不能超过可用余额'))
                 return
             }
-            const minAmount = Number(this.transferConfig.transfer_aix_min)
+            const minAmount = Number(this.transferConfig[`transfer_${this.selectedAsset.symbol.toLowerCase()}_min`])
             if (Number.isFinite(minAmount) && amountNumber < minAmount) {
                 this.$toast(this.$t('划转数量低于最低限额'))
                 return
             }
-            this.showTransferAuth = true
+            if (!/^\d{6}$/.test(this.payPassword)) {
+                this.$toast(this.$t('支付密码必须为6位数字'))
+                return
+            }
+            if (this.googleRequired) {
+                this.showTransferGoogleVerification = true
+                return
+            }
+            this.submitTransfer()
         },
-        async submitTransfer(auth) {
+        async submitTransfer(auth = {}) {
             if (this.isSubmitting) return
             this.isSubmitting = true
             try {
                 const res = await this.$http.post('/api/cross_transfers', {
+                    ccy: this.selectedAsset.ccy,
                     to_account: this.address,
                     amount: this.amount,
-                    pay_password: auth.pay_password,
-                    google_code: auth.google_code,
+                    pay_password: this.payPassword,
+                    ...(auth.google_code ? { google_code: auth.google_code } : {}),
                 })
                 if (res.code == 200) {
-                    this.showTransferAuth = false
+                    this.showTransferGoogleVerification = false
                     this.address = ''
                     this.amount = ''
+                    this.payPassword = ''
+                    this.showPayPassword = false
                     this.$messageTip.success(this.$t('划转申请已提交'))
                     this.loadBalance()
                 }
@@ -274,16 +361,25 @@ export default {
                 this.isSubmitting = false
             }
         },
+        promptBindEmail() {
+            this.$dialog.confirm({
+                title: this.$t('绑定邮箱'),
+                message: this.$t('请先绑定邮箱'),
+                confirmButtonText: this.$t('立即绑定'),
+                cancelButtonText: this.$t('取消'),
+                showCancelButton: true,
+            }).then(() => {
+                this.$router.push({ name: 'bindEmail' })
+            }).catch(() => {})
+        },
     },
 }
 </script>
 
 <style scoped lang="less">
 .asset-transfer-page {
-    position: relative;
     width: 750px;
-    height: 1624px;
-    min-height: 100vh;
+    min-height: 1624px;
     margin: 0 auto;
     overflow-x: hidden;
     background: #000308;
@@ -347,19 +443,22 @@ export default {
     }
 
     .asset-transfer-content {
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 750px;
-        height: 1624px;
+        display: flex;
+        width: 690px;
+        min-height: 1536px;
+        flex-direction: column;
+        margin: 0 auto;
+        padding: 30px 0 80px;
 
         // 模块一：资产与可用余额卡片
         .transfer-information {
-            position: absolute;
-            top: 118px;
-            left: 30px;
+            position: relative;
+            display: flex;
             width: 690px;
             height: 188px;
+            flex: 0 0 188px;
+            flex-direction: column;
+            padding: 39px 30px 11px;
 
             .transfer-information-background {
                 position: absolute;
@@ -371,48 +470,35 @@ export default {
             }
 
             .transfer-information-row {
-                position: absolute;
-                left: 0;
-                display: block;
-                width: 690px;
+                position: relative;
+                z-index: 1;
+                display: flex;
+                width: 100%;
                 height: 69px;
+                flex: 0 0 69px;
+                align-items: flex-start;
                 text-align: left;
 
-                &.transfer-information-row-asset {
-                    top: 39px;
-                }
-
-                &.transfer-information-row-balance {
-                    top: 108px;
-                }
-
                 .transfer-information-label {
-                    position: absolute;
-                    top: 0;
-                    left: 30px;
                     font-size: 28px;
                     line-height: 39px;
                 }
 
                 .transfer-information-value {
-                    position: absolute;
-                    top: 0;
-                    right: 60px;
+                    margin-left: auto;
                     font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
                     font-size: 28px;
                     line-height: 42px;
                     text-align: right;
 
                     &.transfer-information-balance {
-                        right: 30px;
+                        margin-left: auto;
                     }
                 }
 
                 .transfer-information-arrow {
-                    position: absolute;
-                    top: 12px;
-                    right: 30px;
                     display: block;
+                    margin: 12px 0 0 16px;
                     width: 14px;
                     height: 14px;
                 }
@@ -421,18 +507,10 @@ export default {
 
         // 模块二、三：地址与数量输入模块
         .transfer-field-module {
-            position: absolute;
-            left: 30px;
             width: 690px;
             height: 172px;
-
-            &.transfer-address-module {
-                top: 346px;
-            }
-
-            &.transfer-amount-module {
-                top: 558px;
-            }
+            flex: 0 0 172px;
+            margin-top: 40px;
 
             .transfer-field-label {
                 display: block;
@@ -442,11 +520,13 @@ export default {
             }
 
             .transfer-field {
-                position: absolute;
-                top: 69px;
-                left: 0;
+                position: relative;
+                display: flex;
                 width: 690px;
                 height: 103px;
+                align-items: center;
+                margin-top: 30px;
+                padding: 0 30px;
 
                 .transfer-field-background {
                     position: absolute;
@@ -458,10 +538,10 @@ export default {
                 }
 
                 .transfer-field-input {
-                    position: absolute;
+                    position: relative;
                     z-index: 1;
-                    top: 0;
-                    left: 30px;
+                    min-width: 0;
+                    flex: 1 1 auto;
                     height: 103px;
                     color: #FFFFFF;
                     caret-color: #4C91FF;
@@ -470,11 +550,11 @@ export default {
                     line-height: 103px;
 
                     &.transfer-address-input {
-                        width: 630px;
+                        width: 100%;
                     }
 
                     &.transfer-amount-input {
-                        width: 520px;
+                        width: auto;
                     }
 
                     &::placeholder {
@@ -483,11 +563,9 @@ export default {
                 }
 
                 .transfer-field-all {
-                    position: absolute;
+                    position: relative;
                     z-index: 2;
-                    top: 0;
-                    right: 30px;
-                    width: 64px;
+                    flex: 0 0 64px;
                     height: 103px;
                     color: #0084FF;
                     font-size: 24px;
@@ -495,16 +573,29 @@ export default {
                     line-height: 103px;
                     text-align: right;
                 }
+
+                .transfer-password-toggle {
+                    position: relative;
+                    z-index: 2;
+                    width: 40px;
+                    height: 103px;
+                    margin-left: 8px;
+                    flex: 0 0 40px;
+
+                    img {
+                        width: 32px;
+                        height: 32px;
+                    }
+                }
             }
         }
 
-        // 模块四：确认划转按钮
+        // 模块五：确认划转按钮
         .transfer-confirm {
-            position: absolute;
-            top: 790px;
-            left: 30px;
             width: 690px;
             height: 88px;
+            flex: 0 0 88px;
+            margin-top: 60px;
             border-radius: 999px;
             background: #1261F3;
             font-size: 28px;
@@ -516,6 +607,19 @@ export default {
             &:active {
                 transform: scale(0.97);
             }
+        }
+
+        .transfer-notice {
+            width: 690px;
+            margin: 30px 0 0;
+            padding: 20px 24px;
+            border: 1px solid rgba(76, 145, 255, 0.28);
+            border-radius: 16px;
+            background: rgba(18, 97, 243, 0.10);
+            color: rgba(184, 195, 212, 0.90);
+            font-size: 22px;
+            line-height: 34px;
+            word-break: break-word;
         }
     }
 

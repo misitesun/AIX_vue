@@ -28,6 +28,8 @@
                             v-model.trim="form.email"
                             type="email"
                             autocomplete="email"
+                            readonly
+                            aria-readonly="true"
                             :placeholder="$t('邮箱')"
                             :aria-label="$t('邮箱')"
                         />
@@ -144,8 +146,14 @@ export default {
         async loadAccountEmail() {
             try {
                 const res = await this.$http.get('/api/users/my')
-                if (res.code == 200 && res.data && res.data.memail) {
-                    this.form.email = res.data.memail
+                if (res.code == 200 && res.data) {
+                    const email = String(res.data.email || '').trim()
+                    if (!email) {
+                        this.$toast(this.$t('请先绑定邮箱'))
+                        this.$router.replace({ name: 'settings' })
+                        return
+                    }
+                    this.form.email = email
                 }
             } catch (error) {
                 console.log('获取当前账户邮箱失败', error)

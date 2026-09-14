@@ -450,5 +450,15 @@
     "授权订单": "Pesanan kelulusan",
     "查看授权记录与订单状态": "Lihat rekod kelulusan dan status pesanan",
     "下载APP": "Muat turun aplikasi",
-    "下载地址暂未配置": "Pautan muat turun belum dikonfigurasikan"
+    "下载地址暂未配置": "Pautan muat turun belum dikonfigurasikan",
+    "切换账号": "Tukar akaun",
+    "账号": "Akaun",
+    "当前已登录": "Sedang log masuk",
+    "切换": "Tukar",
+    "暂无已保存账号": "Tiada akaun disimpan",
+    "账号切换成功": "Akaun berjaya ditukar",
+    "账号凭据已失效，请重新登录": "Bukti kelayakan tersimpan tidak lagi sah. Sila log masuk semula",
+    "记录账号密码": "Simpan akaun dan kata laluan",
+    "添加账号": "Tambah akaun",
+    "划转功能仅支持 AIX-Quant 向 XSmartPay 划转资产，不支持AIX-Quant 内部互转。": "Fungsi pindahan hanya menyokong pemindahan aset dari AIX-Quant ke XSmartPay dan tidak menyokong pindahan dalaman AIX-Quant."
 }

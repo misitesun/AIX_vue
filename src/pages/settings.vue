@@ -1,12 +1,9 @@
 <template>
     <div class="settings-page">
-        <!-- 公共模块：设计稿系统状态栏不渲染，使用项目统一的固定 Vant NavBar。 -->
+        <!-- 公共模块：设计稿系统状态栏不渲染，导航随页面正常文档流排列。 -->
         <van-nav-bar
             :title="$t('设置')"
-            :fixed="true"
-            :placeholder="true"
             :border="false"
-            z-index="99"
             @click-left="$go(1, 1)"
         >
             <template #left>
@@ -20,7 +17,7 @@
                 <h2>{{ $t('安全设置') }}</h2>
                 <div class="settings-list">
                     <button
-                        v-for="item in securityItems"
+                        v-for="item in visibleSecurityItems"
                         :key="item.action"
                         type="button"
                         class="settings-item df-aic-jusb"
@@ -93,36 +90,28 @@
                             <img src="@img/home-more-arrow.png" alt="" />
                         </span>
                     </button>
+                    <button
+                        v-if="account.email"
+                        type="button"
+                        class="settings-item settings-account-item df-aic-jusb"
+                        @click="handleItem('switchAccount')"
+                    >
+                        <span>{{ $t('切换账号') }}</span>
+                        <img src="@img/home-more-arrow.png" alt="" />
+                    </button>
                 </div>
             </section>
         </main>
 
         <!-- 模块三：版本信息与退出登录 -->
         <!-- <p class="settings-version">{{ $t('版本号') }}：{{ version }}</p> -->
-        <button type="button" class="settings-logout df-aic-jucen" @click="confirmLogout">
-            <img src="@img/settings-logout.svg" alt="" />
-            <span>{{ $t('退出登录') }}</span>
-        </button>
+        <footer class="settings-footer">
+            <button type="button" class="settings-logout df-aic-jucen" @click="confirmLogout">
+                <img src="@img/settings-logout.svg" alt="" />
+                <span>{{ $t('退出登录') }}</span>
+            </button>
+        </footer>
 
-        <!-- 已绑定邮箱但未绑定谷歌验证器时，设置页同样强制完成绑定。 -->
-        <div
-            v-if="showGoogleBindingRequired"
-            class="settings-google-binding-required-overlay"
-            role="dialog"
-            aria-modal="true"
-            @touchmove.prevent
-        >
-            <section class="settings-google-binding-required-panel">
-                <span class="settings-google-binding-required-icon df-aic-jucen">
-                    <van-icon name="shield-o" size="48" color="#4C91FF" />
-                </span>
-                <h2>{{ $t('谷歌验证器未绑定') }}</h2>
-                <p>{{ $t('为了保障您的账户安全，请先绑定谷歌验证器后继续使用') }}</p>
-                <button type="button" @click="goBindGoogleAuthenticator">
-                    {{ $t('立即绑定') }}
-                </button>
-            </section>
-        </div>
     </div>
 </template>
 
@@ -133,7 +122,6 @@ export default {
         return {
             version: process.env.VUE_APP_VERSION || '1.1.0',
             googleBindingStatus: 'loading',
-            showGoogleBindingRequired: false,
             accountInfoLoaded: false,
             account: {
                 email: '',
@@ -146,6 +134,9 @@ export default {
         }
     },
     computed: {
+        visibleSecurityItems() {
+            return this.accountInfoLoaded && this.account.email ? this.securityItems : []
+        },
         googleBindingStatusText() {
             if (this.googleBindingStatus === 'bound') return this.$t('已绑定')
             if (this.googleBindingStatus === 'unbound') return this.$t('未绑定')
@@ -158,12 +149,26 @@ export default {
     },
     methods: {
         handleItem(action) {
+            if (['loginPassword', 'payPassword', 'switchAccount'].includes(action)) {
+                if (!this.accountInfoLoaded) {
+                    this.$toast(this.$t('账户信息加载中，请稍后'))
+                    return
+                }
+                if (!this.account.email) {
+                    this.promptBindEmail()
+                    return
+                }
+            }
             if (action === 'loginPassword') {
                 this.$router.push({ name: 'changeLoginPassword' })
                 return
             }
             if (action === 'payPassword') {
                 this.$router.push({ name: 'changePayPassword' })
+                return
+            }
+            if (action === 'switchAccount') {
+                this.$router.push({ name: 'switchAccount' })
             }
         },
         async loadAccountInfo() {
@@ -177,7 +182,6 @@ export default {
                         email: String(res.data.email || '').trim(),
                         address: String(res.data.address || '').trim(),
                     }
-                    this.showGoogleBindingRequired = Boolean(this.account.email) && !isGoogleBound
                     return
                 }
                 this.googleBindingStatus = 'unknown'
@@ -211,11 +215,16 @@ export default {
             }
             this.$router.push({ name: 'bindWalletAddress' })
         },
-        goBindGoogleAuthenticator() {
-            this.$router.push({
-                name: 'googleAuthenticator',
-                query: { forced: '1' },
-            })
+        promptBindEmail() {
+            this.$dialog.confirm({
+                title: this.$t('绑定邮箱'),
+                message: this.$t('请先绑定邮箱'),
+                confirmButtonText: this.$t('立即绑定'),
+                cancelButtonText: this.$t('取消'),
+                showCancelButton: true,
+            }).then(() => {
+                this.$router.push({ name: 'bindEmail' })
+            }).catch(() => {})
         },
         handleGoogleAuthenticator() {
             if (this.googleBindingStatus === 'loading') {
@@ -254,12 +263,12 @@ export default {
 
 <style scoped lang="less">
 .settings-page {
-    position: relative;
+    display: flex;
     width: 750px;
-    height: 1584px;
     min-height: 100vh;
     margin: 0 auto;
-    overflow: hidden;
+    overflow-x: hidden;
+    flex-direction: column;
     background: #000308;
     color: #FFFFFF;
 
@@ -275,8 +284,7 @@ export default {
         font: inherit;
     }
 
-    // 固定导航：设计稿顶部 40px 系统状态栏已移除。
-    /deep/ .van-nav-bar__placeholder,
+    // 普通流导航：设计稿顶部 40px 系统状态栏已移除。
     /deep/ .van-nav-bar,
     /deep/ .van-nav-bar__content {
         height: 88px;
@@ -296,8 +304,7 @@ export default {
         }
 
         .van-nav-bar__left {
-            left: 30px;
-            padding: 0;
+            padding: 0 0 0 30px;
         }
     }
 
@@ -308,14 +315,19 @@ export default {
     }
 
     .settings-content {
-        position: relative;
-        width: 750px;
-        height: 100%;
+        display: flex;
+        width: 690px;
+        margin: 0 auto;
+        padding-top: 30px;
+        flex: 1 0 auto;
+        flex-direction: column;
 
         .settings-section {
-            position: absolute;
-            left: 30px;
-            width: 690px;
+            width: 100%;
+
+            & + .settings-section {
+                margin-top: 60px;
+            }
 
             h2 {
                 height: 34px;
@@ -357,14 +369,6 @@ export default {
             }
         }
 
-        .settings-security {
-            top: 30px;
-        }
-
-        .settings-account {
-            top: 454px;
-        }
-
         .settings-google-item,
         .settings-account-item {
             .settings-item-action {
@@ -399,96 +403,18 @@ export default {
         }
     }
 
-    .settings-version {
-        position: fixed;
-        bottom: 162px;
-        left: 50%;
-        z-index: 2;
-        margin: 0;
-        transform: translateX(-50%);
-        color: #999999;
-        font-size: 24px;
-        line-height: 34px;
-        white-space: nowrap;
-    }
-
-    // 强制绑定弹窗：无关闭控件，阻止触摸穿透。
-    .settings-google-binding-required-overlay {
-        position: fixed;
-        top: 0;
-        left: 50%;
-        z-index: 700;
+    .settings-footer {
         display: flex;
-        width: 750px;
-        height: 100vh;
-        align-items: center;
-        justify-content: center;
-        padding: 30px;
-        transform: translateX(-50%);
-        background: rgba(0, 3, 12, 0.82);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-
-        .settings-google-binding-required-panel {
-            width: 630px;
-            padding: 64px 50px 50px;
-            border: 2px solid #1B6CFF;
-            border-radius: 36px;
-            background: linear-gradient(180deg, rgba(7, 27, 67, 0.98) 0%, rgba(1, 10, 31, 0.98) 100%);
-            box-shadow: 0 22px 70px rgba(0, 74, 255, 0.28);
-            text-align: center;
-
-            .settings-google-binding-required-icon {
-                width: 112px;
-                height: 112px;
-                margin: 0 auto 34px;
-                border: 2px solid rgba(76, 145, 255, 0.72);
-                border-radius: 50%;
-                background: radial-gradient(circle, rgba(36, 116, 255, 0.28) 0%, rgba(3, 18, 49, 0.92) 72%);
-                box-shadow: 0 0 32px rgba(46, 132, 255, 0.42);
-            }
-
-            h2 {
-                margin: 0;
-                color: #FFFFFF;
-                font-size: 38px;
-                font-weight: 600;
-                line-height: 54px;
-            }
-
-            p {
-                margin: 28px 0 46px;
-                color: #AAB7CD;
-                font-size: 26px;
-                line-height: 42px;
-            }
-
-            button {
-                width: 530px;
-                height: 88px;
-                border-radius: 999px;
-                background: linear-gradient(90deg, #1261F3 0%, #287BFF 100%);
-                box-shadow: 0 12px 28px rgba(18, 97, 243, 0.28);
-                color: #FFFFFF;
-                font-size: 30px;
-                font-weight: 600;
-                line-height: 42px;
-
-                &:active {
-                    transform: scale(0.98);
-                }
-            }
-        }
-    }
-    .settings-logout {
-        position: fixed;
-        bottom: 40px;
-        left: 50%;
-        z-index: 2;
         width: 690px;
         height: 88px;
+        margin: 60px auto 40px;
+        flex: 0 0 88px;
+    }
+
+    .settings-logout {
+        width: 100%;
+        height: 88px;
         gap: 10px;
-        transform: translateX(-50%);
         border-radius: 999px;
         background: #1261F3;
         font-size: 28px;
@@ -501,7 +427,7 @@ export default {
         }
 
         &:active {
-            transform: translateX(-50%) scale(0.98);
+            transform: scale(0.98);
         }
     }
 }

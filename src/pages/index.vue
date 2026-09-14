@@ -232,40 +232,20 @@
 
         <!-- 模块七：首页弹窗。公告优先展示，避免与收益预警同时叠加。 -->
         <system-announcement-popup
-            v-if="!showGoogleBindingRequired && showSystemAnnouncement"
+            v-if="showSystemAnnouncement"
             :title="announcement.title"
             :message="announcement.content"
             @close="closeSystemAnnouncement"
         />
         <revenue-warning-popup
-            v-else-if="!showGoogleBindingRequired && showRevenueWarning"
+            v-else-if="showRevenueWarning"
             :member-name="warningInfo.memberName"
             :reduced-amount="warningInfo.reducedAmount"
             @close="closeRevenueWarning"
         />
 
-        <!-- 模块八：未绑定谷歌验证器时强制拦截首页，不提供任何关闭入口。 -->
-        <div
-            v-if="showGoogleBindingRequired"
-            class="google-binding-required-overlay"
-            role="dialog"
-            aria-modal="true"
-            @touchmove.prevent
-        >
-            <section class="google-binding-required-panel">
-                <span class="google-binding-required-icon df-aic-jucen">
-                    <van-icon name="shield-o" size="48" color="#4C91FF" />
-                </span>
-                <h2>{{ $t('谷歌验证器未绑定') }}</h2>
-                <p>{{ $t('为了保障您的账户安全，请先绑定谷歌验证器后继续使用') }}</p>
-                <button type="button" @click="goBindGoogleAuthenticator">
-                    {{ $t('立即绑定') }}
-                </button>
-            </section>
-        </div>
-
         <transaction-auth-popup
-            v-if="!showGoogleBindingRequired && showOrderAuth"
+            v-if="showOrderAuth"
             :title="$t('确认授权')"
             :google-required="googleOrderRequired"
             :loading="isSubmitting"
@@ -307,8 +287,6 @@ export default {
             assetVisibilityEyeHidden,
             showSystemAnnouncement: false,
             showRevenueWarning: false,
-            showGoogleBindingRequired: false,
-            previousBodyOverflow: '',
             showOrderAuth: false,
             isSubmitting: false,
             amount: '',
@@ -348,6 +326,8 @@ export default {
             transactionCarouselTimer: null,
             transactionRefreshTimer: null,
             transactionCarouselFrame: null,
+            hasBoundEmail: false,
+            userProfileLoaded: false,
         }
     },
     computed: {
@@ -415,23 +395,12 @@ export default {
             }
         },
     },
-    watch: {
-        showGoogleBindingRequired(value) {
-            if (value) {
-                this.previousBodyOverflow = document.body.style.overflow
-                document.body.style.overflow = 'hidden'
-                return
-            }
-            document.body.style.overflow = this.previousBodyOverflow
-        },
-    },
     mounted() {
         this.loadHomeData()
         this.startTransactionTimers()
         window.addEventListener('resize', this.syncTransactionCarouselLayout)
     },
     beforeDestroy() {
-        document.body.style.overflow = this.previousBodyOverflow
         this.stopTransactionTimers()
         window.removeEventListener('resize', this.syncTransactionCarouselLayout)
     },
@@ -473,7 +442,6 @@ export default {
             image.src = this.planFallbackImage
         },
         loadHomeData() {
-            this.loadGoogleBindingStatus()
             this.loadBalance()
             this.loadHomeStatistics()
             this.loadProducts()
@@ -481,28 +449,18 @@ export default {
             this.loadTransactions()
             this.loadPopNotice()
             this.loadRevenueWarning()
+            this.loadUserProfile()
         },
-        async loadGoogleBindingStatus() {
+        async loadUserProfile() {
             try {
-                const res = await this.$http.get('/api/users/my')
+                const res = await this.$http.get("/api/users/my")
                 if (res.code == 200 && res.data) {
-                    const hasEmail = Boolean(String(res.data.email || '').trim())
-                    const enabled = res.data.google_2fa_enabled
-                    const isGoogleBound = enabled === true
-                        || enabled === 1
-                        || enabled === '1'
-                        || enabled === 'true'
-                    this.showGoogleBindingRequired = hasEmail && !isGoogleBound
+                    this.hasBoundEmail = Boolean(String(res.data.email || "").trim())
+                    this.userProfileLoaded = true
                 }
             } catch (error) {
-                console.log('谷歌验证器绑定状态加载失败', error)
+                console.log("节点页账户信息加载失败", error)
             }
-        },
-        goBindGoogleAuthenticator() {
-            this.$router.push({
-                name: 'googleAuthenticator',
-                query: { forced: '1' },
-            })
         },
         async loadBalance() {
             try {
@@ -744,6 +702,10 @@ export default {
                 this.$toast(this.$t('暂未开放购买'))
                 return
             }
+            if (!this.hasBoundEmail) {
+                this.promptBindEmail()
+                return
+            }
             const amount = Number(this.amount)
             const minAmount = Number(this.selectedProduct.min_amount)
             const maxAmount = Number(this.selectedProduct.max_amount)
@@ -796,6 +758,17 @@ export default {
                 integer: parts[0],
                 decimal: parts.length > 1 ? `.${parts.slice(1).join('.')}` : '',
             }
+        },
+        promptBindEmail() {
+            this.$dialog.confirm({
+                title: this.$t('绑定邮箱'),
+                message: this.$t('请先绑定邮箱'),
+                confirmButtonText: this.$t('立即绑定'),
+                cancelButtonText: this.$t('取消'),
+                showCancelButton: true,
+            }).then(() => {
+                this.$router.push({ name: 'bindEmail' })
+            }).catch(() => {})
         },
     },
 }
@@ -1470,75 +1443,6 @@ export default {
                             color: #4C91FF;
                         }
                     }
-                }
-            }
-        }
-    }
-
-    // 模块八：谷歌验证器强制绑定弹窗。仅保留绑定入口，不响应遮罩或返回关闭。
-    .google-binding-required-overlay {
-        position: fixed;
-        top: 0;
-        left: 50%;
-        z-index: 700;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 750px;
-        height: var(--app-viewport-height, 100dvh);
-        padding: 30px;
-        transform: translateX(-50%);
-        background: rgba(0, 3, 12, 0.82);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-
-        .google-binding-required-panel {
-            width: 630px;
-            padding: 64px 50px 50px;
-            border: 2px solid #1B6CFF;
-            border-radius: 36px;
-            background: linear-gradient(180deg, rgba(7, 27, 67, 0.98) 0%, rgba(1, 10, 31, 0.98) 100%);
-            box-shadow: 0 22px 70px rgba(0, 74, 255, 0.28);
-            text-align: center;
-
-            .google-binding-required-icon {
-                width: 112px;
-                height: 112px;
-                margin: 0 auto 34px;
-                border: 2px solid rgba(76, 145, 255, 0.72);
-                border-radius: 50%;
-                background: radial-gradient(circle, rgba(36, 116, 255, 0.28) 0%, rgba(3, 18, 49, 0.92) 72%);
-                box-shadow: 0 0 32px rgba(46, 132, 255, 0.42);
-            }
-
-            h2 {
-                margin: 0;
-                color: #FFFFFF;
-                font-size: 38px;
-                font-weight: 600;
-                line-height: 54px;
-            }
-
-            p {
-                margin: 28px 0 46px;
-                color: #AAB7CD;
-                font-size: 26px;
-                line-height: 42px;
-            }
-
-            button {
-                width: 530px;
-                height: 88px;
-                border-radius: 999px;
-                background: linear-gradient(90deg, #1261F3 0%, #287BFF 100%);
-                box-shadow: 0 12px 28px rgba(18, 97, 243, 0.28);
-                color: #FFFFFF;
-                font-size: 30px;
-                font-weight: 600;
-                line-height: 42px;
-
-                &:active {
-                    transform: scale(0.98);
                 }
             }
         }

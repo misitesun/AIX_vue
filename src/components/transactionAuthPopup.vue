@@ -3,8 +3,8 @@
         <section class="transaction-auth-panel">
             <h2>{{ title }}</h2>
 
-            <!-- 支付密码为所有资金类接口的必填字段。 -->
-            <label class="transaction-auth-field common-input-focus">
+            <!-- 后台未开启谷歌验证时使用支付密码。 -->
+            <label v-if="payRequired" class="transaction-auth-field common-input-focus">
                 <input
                     v-model="payPassword"
                     :type="showPayPassword ? 'text' : 'password'"
@@ -65,6 +65,10 @@ export default {
             type: Boolean,
             default: false,
         },
+        payRequired: {
+            type: Boolean,
+            default: true,
+        },
         loading: {
             type: Boolean,
             default: false,
@@ -95,7 +99,7 @@ export default {
             if (!this.loading) this.$emit('close')
         },
         submit() {
-            if (!/^\d{6}$/.test(this.payPassword)) {
+            if (this.payRequired && !/^\d{6}$/.test(this.payPassword)) {
                 this.$toast(this.$t('支付密码必须为6位数字'))
                 return
             }
@@ -103,10 +107,10 @@ export default {
                 this.$toast(this.$t('请输入6位谷歌验证码'))
                 return
             }
-            this.$emit('confirm', {
-                pay_password: this.payPassword,
-                google_code: this.googleRequired ? this.googleCode : null,
-            })
+            const auth = {}
+            if (this.payRequired) auth.pay_password = this.payPassword
+            if (this.googleRequired) auth.google_code = this.googleCode
+            this.$emit('confirm', auth)
         },
     },
 }

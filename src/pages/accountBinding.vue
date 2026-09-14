@@ -22,7 +22,7 @@
                 <h1>{{ pageTitle }}</h1>
 
                 <form class="account-binding-form" @submit.prevent="submitBinding">
-                    <!-- 钱包账户绑定邮箱：输入目标邮箱、验证码和当前登录密码。 -->
+                    <!-- 钱包账户绑定邮箱：输入目标邮箱、验证码、登录密码和支付密码。 -->
                     <label
                         v-if="isEmailBinding"
                         class="account-binding-field common-input-focus"
@@ -114,8 +114,34 @@
                         </button>
                     </div>
 
+                    <div
+                        v-if="isEmailBinding"
+                        class="account-binding-field common-input-focus"
+                    >
+                        <img src="@img/email-login-lock.svg" alt="" />
+                        <input
+                            v-model="form.payPassword"
+                            :type="showPayPassword ? 'text' : 'password'"
+                            inputmode="numeric"
+                            maxlength="6"
+                            autocomplete="off"
+                            :placeholder="$t('请输入支付密码')"
+                            :aria-label="$t('请输入支付密码')"
+                            @input="normalizeNumber('payPassword', $event)"
+                        />
+                        <button
+                            type="button"
+                            class="account-binding-eye df-aic-jucen"
+                            :aria-label="$t('显示或隐藏支付密码')"
+                            :aria-pressed="showPayPassword"
+                            @click="showPayPassword = !showPayPassword"
+                        >
+                            <img :src="showPayPassword ? eyeHidden : eyeVisible" alt="" />
+                        </button>
+                    </div>
+
                     <label
-                        v-else
+                        v-if="!isEmailBinding"
                         class="account-binding-field common-input-focus"
                     >
                         <img src="@img/register-code.svg" alt="" />
@@ -160,8 +186,10 @@ export default {
                 emailCode: '',
                 googleCode: '',
                 password: '',
+                payPassword: '',
             },
             showPassword: false,
+            showPayPassword: false,
             isSendingCode: false,
             isSubmitting: false,
             codeCountdown: 0,
@@ -267,6 +295,7 @@ export default {
                 if (!this.isValidEmail(this.form.email)) return this.showValidation('请输入有效邮箱')
                 if (!/^\d{6}$/.test(this.form.emailCode)) return this.showValidation('请输入6位验证码')
                 if (!this.form.password) return this.showValidation('请输入登录密码')
+                if (!/^\d{6}$/.test(this.form.payPassword)) return this.showValidation('支付密码必须为6位数字')
                 return true
             }
 
@@ -294,6 +323,7 @@ export default {
                         email: this.form.email,
                         email_code: this.form.emailCode,
                         password: this.form.password,
+                        pay_password: this.form.payPassword,
                     }
                     : {
                         address: this.form.address,

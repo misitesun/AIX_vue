@@ -122,6 +122,7 @@
             v-if="showNodeAuth"
             :title="$t('确认认购')"
             :google-required="googleNodeRequired"
+            :pay-required="!googleNodeRequired"
             :loading="isSubmitting"
             @close="showNodeAuth = false"
             @confirm="submitNodeOrder"
@@ -154,7 +155,7 @@ export default {
                 google_2fa_node_switch: 0,
             },
             nodeConfigLoaded: false,
-            isEmailAccount: false,
+            hasBoundEmail: false,
             userProfileLoaded: false,
             nodeSwiperOptions: {
                 slidesPerView: 1.1,
@@ -173,7 +174,7 @@ export default {
             return this.nodeProducts.findIndex(item => item.id === this.activeNodeId)
         },
         googleNodeRequired() {
-            return this.isEmailAccount && Number(this.nodeConfig.google_2fa_node_switch) === 1
+            return Number(this.nodeConfig.google_2fa_node_switch) === 1
         },
         selectedCurrency() {
             return this.selectedCcy === 'balance_usdt' ? 'USDT' : 'AIX'
@@ -208,7 +209,7 @@ export default {
             try {
                 const res = await this.$http.get("/api/users/my")
                 if (res.code == 200 && res.data) {
-                    this.isEmailAccount = Boolean(String(res.data.email || "").trim())
+                    this.hasBoundEmail = Boolean(String(res.data.email || "").trim())
                     this.userProfileLoaded = true
                 }
             } catch (error) {
@@ -288,6 +289,10 @@ export default {
                 this.$toast(this.$t("账户信息加载中，请稍后"))
                 return
             }
+            if (!this.hasBoundEmail) {
+                this.promptBindEmail()
+                return
+            }
 
             if (!this.activeNode) {
                 this.$toast(this.$t('暂无可认购节点'))
@@ -306,8 +311,7 @@ export default {
                 const res = await this.$http.post('/api/node_orders', {
                     node_product_id: this.activeNode.id,
                     ccy: this.selectedCcy,
-                    pay_password: auth.pay_password,
-                    google_code: auth.google_code,
+                    ...auth,
                 })
                 if (res.code == 200) {
                     this.showNodeAuth = false
@@ -319,6 +323,17 @@ export default {
             } finally {
                 this.isSubmitting = false
             }
+        },
+        promptBindEmail() {
+            this.$dialog.confirm({
+                title: this.$t('绑定邮箱'),
+                message: this.$t('请先绑定邮箱'),
+                confirmButtonText: this.$t('立即绑定'),
+                cancelButtonText: this.$t('取消'),
+                showCancelButton: true,
+            }).then(() => {
+                this.$router.push({ name: 'bindEmail' })
+            }).catch(() => {})
         },
         handleTabChange(tab) {
             if (tab === 'index') {
@@ -392,7 +407,6 @@ export default {
                             height: 100%;
                             max-width: 100%;
                             transform: none;
-                            object-fit: cover;
                         }
                     }
                 }
