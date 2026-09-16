@@ -171,7 +171,14 @@ const router = new Router({
             component: () =>
                 import("@/pages/assetTransfer"),
         },
-        // 资产流水、提现记录与划转记录
+        // 会员之间互转
+        {
+            path: '/assets/:assetId/member-transfer',
+            name: 'assetMemberTransfer',
+            component: () =>
+                import("@/pages/assetMemberTransfer"),
+        },
+        // 资产流水、提现记录、划转记录与互转记录
         {
             path: '/assets/records',
             name: 'assetRecords',

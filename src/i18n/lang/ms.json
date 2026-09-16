@@ -460,5 +460,21 @@
     "账号凭据已失效，请重新登录": "Bukti kelayakan tersimpan tidak lagi sah. Sila log masuk semula",
     "记录账号密码": "Simpan akaun dan kata laluan",
     "添加账号": "Tambah akaun",
-    "划转功能仅支持 AIX-Quant 向 XSmartPay 划转资产，不支持AIX-Quant 内部互转。": "Fungsi pindahan hanya menyokong pemindahan aset dari AIX-Quant ke XSmartPay dan tidak menyokong pindahan dalaman AIX-Quant."
+    "划转功能仅支持 AIX-Quant 向 XSmartPay 划转资产，不支持AIX-Quant 内部互转。": "Fungsi pindahan hanya menyokong pemindahan aset dari AIX-Quant ke XSmartPay dan tidak menyokong pindahan dalaman AIX-Quant.",
+    "互转": "Pemindahan ahli",
+    "互转资产": "Aset pemindahan",
+    "互转数量": "Jumlah pemindahan",
+    "互转记录": "Rekod pemindahan ahli",
+    "选择互转资产": "Pilih aset pemindahan",
+    "暂未开放互转": "Pemindahan ahli belum dibuka",
+    "请输入有效互转数量": "Masukkan jumlah pemindahan yang sah",
+    "互转数量不能超过可用余额": "Jumlah pemindahan tidak boleh melebihi baki tersedia",
+    "互转数量低于最低限额": "Jumlah pemindahan di bawah had minimum",
+    "互转已完成": "Pemindahan ahli selesai",
+    "最低互转金额": "Jumlah pemindahan minimum",
+    "互转即时到账，手续费由转出方承担。": "Pemindahan ahli dikreditkan serta-merta; yuran ditanggung oleh pengirim.",
+    "转给": "Kepada",
+    "来自": "Daripada",
+    "对方账号": "Akaun pihak lawan",
+    "到账金额": "Jumlah diterima"
 }

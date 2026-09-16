@@ -16,7 +16,7 @@
             </template>
         </van-nav-bar>
 
-        <!-- 页面主体：三类记录共用一个 Mescroll 分页容器 -->
+        <!-- 页面主体：四类记录共用一个 Mescroll 分页容器 -->
         <mescroll-vue
             ref="mescroll"
             class="asset-records-scroll"
@@ -24,7 +24,7 @@
             @init="mescrollInit"
         >
             <main class="asset-records-content">
-                <!-- 模块一：资产流水、提现、划转类型切换 -->
+                <!-- 模块一：资产流水、提现、划转、互转类型切换 -->
                 <nav class="asset-record-tabs" role="tablist">
                     <button
                         v-for="tab in recordTabs"
@@ -103,7 +103,7 @@
                             </template>
 
                             <!-- 划转记录卡片 -->
-                            <template v-else>
+                            <template v-else-if="activeType === 'transfer'">
                                 <header class="asset-record-heading df-aic-jusb">
                                     <div class="asset-record-title">
                                         <h2>{{ $t('划转记录') }}</h2>
@@ -133,6 +133,36 @@
                                     </div>
                                 </div>
                             </template>
+
+                            <!-- 会员互转记录卡片：方向只以接口 type 字段判断。 -->
+                            <template v-else>
+                                <header class="asset-record-heading df-aic-jusb">
+                                    <div class="asset-record-title">
+                                        <h2>{{ $t(record.isOutgoing ? '转给' : '来自') }} {{ record.counterparty }}</h2>
+                                        <time>{{ record.createdAt }}</time>
+                                    </div>
+                                </header>
+                                <div
+                                    class="asset-record-primary-value"
+                                    :class="record.isOutgoing ? 'is-expense' : 'is-income'"
+                                >
+                                    {{ record.isOutgoing ? '−' : '+' }}{{ record.amount }} {{ record.symbol }}
+                                </div>
+                                <div class="asset-record-details">
+                                    <div class="asset-record-detail df-aic-jusb">
+                                        <span>{{ $t('对方账号') }}</span>
+                                        <span class="asset-record-long-value">{{ record.counterparty }}</span>
+                                    </div>
+                                    <div v-if="record.isOutgoing" class="asset-record-detail df-aic-jusb">
+                                        <span>{{ $t('手续费') }}</span>
+                                        <span>{{ record.fee }} {{ record.symbol }}</span>
+                                    </div>
+                                    <div v-else class="asset-record-detail df-aic-jusb">
+                                        <span>{{ $t('到账金额') }}</span>
+                                        <span>{{ record.receivedAmount }} {{ record.symbol }}</span>
+                                    </div>
+                                </div>
+                            </template>
                         </article>
                     </div>
                     <no-data v-else></no-data>
@@ -143,7 +173,9 @@
 </template>
 
 <script>
-const RECORD_TYPES = ['asset', 'withdraw', 'transfer']
+import BigNumber from 'bignumber.js'
+
+const RECORD_TYPES = ['asset', 'withdraw', 'transfer', 'memberTransfer']
 
 export default {
     name: 'AssetRecords',
@@ -157,6 +189,7 @@ export default {
                 { value: 'asset', label: '资产流水' },
                 { value: 'withdraw', label: '提现记录' },
                 { value: 'transfer', label: '划转记录' },
+                { value: 'memberTransfer', label: '互转记录' },
             ],
             withdrawStatuses: [
                 { value: 1, label: '待审核' },
@@ -231,6 +264,11 @@ export default {
                     source = res.code == 200 && res.data && Array.isArray(res.data.cross_transfers)
                         ? res.data.cross_transfers
                         : []
+                } else if (this.activeType === 'memberTransfer') {
+                    const res = await this.$http.get('/api/transfers', pageParams)
+                    source = res.code == 200 && res.data && Array.isArray(res.data.transfers)
+                        ? res.data.transfers
+                        : []
                 } else {
                     // 充值暂无独立记录接口，资产流水不传 ccy，规避文档注明的历史校验限制。
                     const res = await this.$http.get('/api/asset_logs', pageParams)
@@ -273,6 +311,21 @@ export default {
                     failReason: item.fail_reason || '',
                 }
             }
+            if (this.activeType === 'memberTransfer') {
+                const fee = item.fee === undefined || item.fee === null || item.fee === '' ? '0' : item.fee
+                const counterpartyEmail = String(item.email || '').trim()
+                const counterpartyAddress = String(item.address || '').trim()
+                return {
+                    id: item.id,
+                    amount: item.amount,
+                    fee,
+                    isOutgoing: Number(item.type) === 1,
+                    createdAt: item.created_at,
+                    symbol: this.currencySymbol(item.ccy),
+                    counterparty: counterpartyEmail || counterpartyAddress || this.$t('无数据'),
+                    receivedAmount: this.getReceivedAmount(item.amount, fee),
+                }
+            }
             return {
                 id: item.id,
                 isIncrease: Number(item.is_inc) === 1,
@@ -291,6 +344,13 @@ export default {
                 balance_year_aix: this.$t('年终奖AIX'),
             }
             return symbolMap[ccy] || ccy || this.$t('无数据')
+        },
+        getReceivedAmount(amount, fee) {
+            const amountValue = new BigNumber(amount)
+            const feeValue = new BigNumber(fee)
+            if (!amountValue.isFinite() || !feeValue.isFinite()) return this.$t('无数据')
+            const receivedAmount = amountValue.minus(feeValue)
+            return receivedAmount.isNegative() ? '0.000000' : receivedAmount.toFixed(6)
         },
         withdrawStatusLabel(status) {
             return {
@@ -370,17 +430,21 @@ export default {
             width: 690px;
             height: 76px;
             padding: 6px;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
+            grid-template-columns: repeat(4, minmax(0, 1fr));
             border-radius: 999px;
             background: rgba(255, 255, 255, 0.10);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
 
             .asset-record-tab {
+                min-width: 0;
+                overflow: hidden;
+                padding: 0 4px;
                 border-radius: 999px;
                 color: rgba(255, 255, 255, 0.60);
-                font-size: 24px;
+                font-size: 20px;
                 font-weight: 500;
+                text-overflow: ellipsis;
                 white-space: nowrap;
 
                 &.active {
@@ -520,6 +584,14 @@ export default {
                         font-size: 38px;
                         font-weight: 500;
                         line-height: 56px;
+
+                        &.is-income {
+                            color: #30E05B;
+                        }
+
+                        &.is-expense {
+                            color: #FF4146;
+                        }
                     }
 
                     .asset-record-details {

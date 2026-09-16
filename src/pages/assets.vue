@@ -51,6 +51,12 @@
                     </span>
                     <span class="asset-action-label">{{ $t('划转') }}</span>
                 </button>
+                <button type="button" class="asset-action-card" @click="openMemberTransfer">
+                    <span class="asset-action-icon asset-action-icon-member-transfer df-aic-jucen">
+                        <img src="@img/asset-action-transfer.svg" alt="" />
+                    </span>
+                    <span class="asset-action-label">{{ $t('互转') }}</span>
+                </button>
             </section>
 
             <!-- 模块三：资产管理列表 -->
@@ -229,6 +235,14 @@ export default {
                 },
             })
         },
+        openMemberTransfer() {
+            this.$router.push({
+                name: 'assetMemberTransfer',
+                params: {
+                    assetId: 'usdt',
+                },
+            })
+        },
         openAssetDetail(item) {
             this.$router.push(`/assets/${item.id}`)
         },
@@ -366,20 +380,22 @@ export default {
         }
     }
 
-    // 模块二：充值、提现、划转入口
+    // 模块二：四个操作入口按两列 Flex 文档流换行，避免依赖定位排版。
     .asset-actions {
         display: flex;
         width: 100%;
-        height: 180px;
         margin-top: 60px;
-        gap: 15px;
+        flex-wrap: wrap;
+        gap: 16px;
 
         .asset-action-card {
             display: flex;
             min-width: 0;
+            width: calc((100% - 16px) / 2);
             height: 180px;
             padding: 22px 26px 24px;
-            flex: 1 1 0;
+            box-sizing: border-box;
+            flex: 0 0 calc((100% - 16px) / 2);
             flex-direction: column;
             align-items: flex-start;
             justify-content: space-between;
@@ -425,6 +441,11 @@ export default {
                 &.asset-action-icon-transfer {
                     background: linear-gradient(135deg, #FF5100 0%, #FF8000 100%);
                     box-shadow: 0 4px 20px rgba(255, 81, 0, 0.40);
+                }
+
+                &.asset-action-icon-member-transfer {
+                    background: linear-gradient(135deg, #7349FF 0%, #A45BFF 100%);
+                    box-shadow: 0 4px 20px rgba(132, 82, 255, 0.42);
                 }
             }
 

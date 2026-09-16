@@ -460,5 +460,21 @@
     "账号凭据已失效，请重新登录": "Saved credentials have expired. Please sign in again",
     "记录账号密码": "Remember account and password",
     "添加账号": "Add account",
-    "划转功能仅支持 AIX-Quant 向 XSmartPay 划转资产，不支持AIX-Quant 内部互转。": "Transfers are supported only from AIX-Quant to XSmartPay; transfers within AIX-Quant are not supported."
+    "划转功能仅支持 AIX-Quant 向 XSmartPay 划转资产，不支持AIX-Quant 内部互转。": "Transfers are supported only from AIX-Quant to XSmartPay; transfers within AIX-Quant are not supported.",
+    "互转": "Member transfer",
+    "互转资产": "Transfer asset",
+    "互转数量": "Transfer amount",
+    "互转记录": "Member transfer records",
+    "选择互转资产": "Select transfer asset",
+    "暂未开放互转": "Member transfers are not available yet",
+    "请输入有效互转数量": "Enter a valid transfer amount",
+    "互转数量不能超过可用余额": "The transfer amount cannot exceed the available balance",
+    "互转数量低于最低限额": "The transfer amount is below the minimum",
+    "互转已完成": "Member transfer completed",
+    "最低互转金额": "Minimum transfer amount",
+    "互转即时到账，手续费由转出方承担。": "Member transfers are credited instantly; the sender pays the fee.",
+    "转给": "To",
+    "来自": "From",
+    "对方账号": "Counterparty account",
+    "到账金额": "Amount received"
 }
