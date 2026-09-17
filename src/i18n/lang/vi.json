@@ -476,5 +476,11 @@
     "转给": "Đến",
     "来自": "Từ",
     "对方账号": "Tài khoản đối tác",
-    "到账金额": "Số tiền nhận được"
+    "到账金额": "Số tiền nhận được",
+    "转出": "Chuyển đi",
+    "转入": "Chuyển vào",
+    "转出记录": "Lịch sử chuyển đi",
+    "转入记录": "Lịch sử chuyển vào",
+    "来源账号": "Tài khoản gửi",
+    "Google验证码（已绑定用户填写）": "Mã Google Authenticator (dành cho người dùng đã liên kết)"
 }

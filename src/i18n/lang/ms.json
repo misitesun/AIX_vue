@@ -476,5 +476,11 @@
     "转给": "Kepada",
     "来自": "Daripada",
     "对方账号": "Akaun pihak lawan",
-    "到账金额": "Jumlah diterima"
+    "到账金额": "Jumlah diterima",
+    "转出": "Keluar",
+    "转入": "Masuk",
+    "转出记录": "Rekod pindahan keluar",
+    "转入记录": "Rekod pindahan masuk",
+    "来源账号": "Akaun pengirim",
+    "Google验证码（已绑定用户填写）": "Kod Google Authenticator (untuk pengguna yang telah dipautkan)"
 }

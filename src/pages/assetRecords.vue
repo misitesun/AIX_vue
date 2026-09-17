@@ -56,6 +56,26 @@
                     </button>
                 </div>
 
+                <!-- 跨项目划转与会员互转均按接口 type=1/2 分页，避免不同方向字段混用。 -->
+                <div
+                    v-else-if="activeType === 'transfer' || activeType === 'memberTransfer'"
+                    class="record-direction-tabs"
+                    role="tablist"
+                >
+                    <button
+                        v-for="direction in transferDirections"
+                        :key="direction.value"
+                        type="button"
+                        role="tab"
+                        class="record-direction-tab"
+                        :class="{ active: activeTransferDirection === direction.value }"
+                        :aria-selected="activeTransferDirection === direction.value"
+                        @click="changeTransferDirection(direction.value)"
+                    >
+                        {{ $t(direction.label) }}
+                    </button>
+                </div>
+
                 <!-- 模块三：记录卡片。字段标题保留在模板，接口数据仅存原始业务字段。 -->
                 <section class="asset-record-list-section">
                     <div v-if="records.length" class="asset-record-list">
@@ -106,28 +126,40 @@
                             <template v-else-if="activeType === 'transfer'">
                                 <header class="asset-record-heading df-aic-jusb">
                                     <div class="asset-record-title">
-                                        <h2>{{ $t('划转记录') }}</h2>
+                                        <h2>{{ $t(record.isOutgoing ? '转出记录' : '转入记录') }}</h2>
                                         <time>{{ record.createdAt }}</time>
                                     </div>
-                                    <span class="asset-record-status" :class="statusClass(record.status)">
+                                    <span
+                                        v-if="record.isOutgoing"
+                                        class="asset-record-status"
+                                        :class="statusClass(record.status)"
+                                    >
                                         {{ $t(transferStatusLabel(record.status)) }}
                                     </span>
                                 </header>
-                                <div class="asset-record-primary-value">−{{ record.amount }} {{ record.symbol }}</div>
+                                <div
+                                    class="asset-record-primary-value"
+                                    :class="record.isOutgoing ? 'is-expense' : 'is-income'"
+                                >
+                                    {{ record.isOutgoing ? '−' : '+' }}{{ record.amount }} {{ record.symbol }}
+                                </div>
                                 <div class="asset-record-details">
-                                    <div class="asset-record-detail df-aic-jusb">
+                                    <div v-if="record.isOutgoing" class="asset-record-detail df-aic-jusb">
                                         <span>{{ $t('手续费') }}</span>
                                         <span>{{ record.fee }} {{ record.symbol }}</span>
                                     </div>
                                     <div class="asset-record-detail df-aic-jusb">
-                                        <span>{{ $t('接收账号') }}</span>
-                                        <span class="asset-record-long-value">{{ record.toAccount }}</span>
+                                        <span>{{ $t(record.isOutgoing ? '接收账号' : '来源账号') }}</span>
+                                        <span class="asset-record-long-value">{{ record.counterparty }}</span>
                                     </div>
                                     <div class="asset-record-detail df-aic-jusb">
                                         <span>{{ $t('转账单号') }}</span>
                                         <span class="asset-record-long-value">{{ record.transferNo }}</span>
                                     </div>
-                                    <div v-if="record.failReason" class="asset-record-detail asset-record-failure df-aic-jusb">
+                                    <div
+                                        v-if="record.isOutgoing && record.failReason"
+                                        class="asset-record-detail asset-record-failure df-aic-jusb"
+                                    >
                                         <span>{{ $t('失败原因') }}</span>
                                         <span class="asset-record-long-value">{{ record.failReason }}</span>
                                     </div>
@@ -185,6 +217,8 @@ export default {
             mescroll: null,
             activeType: RECORD_TYPES.includes(queryType) ? queryType : 'asset',
             withdrawStatus: 1,
+            crossTransferDirection: 1,
+            memberTransferDirection: 1,
             recordTabs: [
                 { value: 'asset', label: '资产流水' },
                 { value: 'withdraw', label: '提现记录' },
@@ -195,6 +229,10 @@ export default {
                 { value: 1, label: '待审核' },
                 { value: 2, label: '已通过' },
                 { value: 3, label: '已拒绝' },
+            ],
+            transferDirections: [
+                { value: 1, label: '转出' },
+                { value: 2, label: '转入' },
             ],
             mescrollUp: {
                 callback: this.upCallback,
@@ -219,6 +257,13 @@ export default {
             this.resetRecords()
         },
     },
+    computed: {
+        activeTransferDirection() {
+            return this.activeType === 'transfer'
+                ? this.crossTransferDirection
+                : this.memberTransferDirection
+        },
+    },
     methods: {
         mescrollInit(mescroll) {
             this.mescroll = mescroll
@@ -237,6 +282,14 @@ export default {
         changeWithdrawStatus(status) {
             if (status === this.withdrawStatus) return
             this.withdrawStatus = status
+            this.resetRecords()
+        },
+        changeTransferDirection(direction) {
+            const directionKey = this.activeType === 'transfer'
+                ? 'crossTransferDirection'
+                : 'memberTransferDirection'
+            if (this[directionKey] === direction) return
+            this[directionKey] = direction
             this.resetRecords()
         },
         resetRecords() {
@@ -260,12 +313,18 @@ export default {
                         ? res.data.withdraws
                         : []
                 } else if (this.activeType === 'transfer') {
-                    const res = await this.$http.get('/api/cross_transfers', pageParams)
+                    const res = await this.$http.get('/api/cross_transfers', {
+                        ...pageParams,
+                        type: this.crossTransferDirection,
+                    })
                     source = res.code == 200 && res.data && Array.isArray(res.data.cross_transfers)
                         ? res.data.cross_transfers
                         : []
                 } else if (this.activeType === 'memberTransfer') {
-                    const res = await this.$http.get('/api/transfers', pageParams)
+                    const res = await this.$http.get('/api/transfers', {
+                        ...pageParams,
+                        type: this.memberTransferDirection,
+                    })
                     source = res.code == 200 && res.data && Array.isArray(res.data.transfers)
                         ? res.data.transfers
                         : []
@@ -299,16 +358,20 @@ export default {
                 }
             }
             if (this.activeType === 'transfer') {
+                const isOutgoing = Number(item.type) === 1
                 return {
                     id: item.id,
                     amount: item.amount,
                     fee: item.fee,
-                    status: Number(item.status),
+                    isOutgoing,
+                    status: isOutgoing ? Number(item.status) : null,
                     createdAt: item.created_at,
                     symbol: this.currencySymbol(item.ccy),
-                    toAccount: item.to_account || this.$t('无数据'),
+                    counterparty: isOutgoing
+                        ? item.to_account || this.$t('无数据')
+                        : item.from_account || this.$t('无数据'),
                     transferNo: item.transfer_no || this.$t('无数据'),
-                    failReason: item.fail_reason || '',
+                    failReason: isOutgoing ? item.fail_reason || '' : '',
                 }
             }
             if (this.activeType === 'memberTransfer') {
@@ -488,7 +551,35 @@ export default {
             }
         }
 
-        // 模块三：三类记录共用的深色毛玻璃卡片。
+        // 模块二：跨项目划转与会员互转的转出／转入筛选。
+        .record-direction-tabs {
+            display: grid;
+            width: 690px;
+            height: 58px;
+            margin-top: 24px;
+            padding: 4px;
+            box-sizing: border-box;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.10);
+
+            .record-direction-tab {
+                min-width: 0;
+                border-radius: 999px;
+                color: rgba(255, 255, 255, 0.55);
+                font-size: 22px;
+                white-space: nowrap;
+
+                &.active {
+                    background: rgba(18, 97, 243, 0.82);
+                    color: #FFFFFF;
+                    font-weight: 600;
+                    box-shadow: 0 4px 16px rgba(18, 97, 243, 0.28);
+                }
+            }
+        }
+
+        // 模块三：四类记录共用的深色毛玻璃卡片。
         .asset-record-list-section {
             width: 690px;
             margin-top: 28px;

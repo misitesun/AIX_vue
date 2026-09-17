@@ -476,5 +476,11 @@
     "转给": "To",
     "来自": "From",
     "对方账号": "Counterparty account",
-    "到账金额": "Amount received"
+    "到账金额": "Amount received",
+    "转出": "Outgoing",
+    "转入": "Incoming",
+    "转出记录": "Outgoing transfer",
+    "转入记录": "Incoming transfer",
+    "来源账号": "Source account",
+    "Google验证码（已绑定用户填写）": "Google Authenticator code (for linked users)"
 }

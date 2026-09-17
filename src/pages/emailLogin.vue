@@ -64,7 +64,6 @@
             >
                 <img src="@img/email-login-lock.svg" alt="" class="email-login-field-icon" />
                 <input
-                    ref="passwordInput"
                     v-model="password"
                     :type="showPassword ? 'text' : 'password'"
                     name="password"
@@ -83,6 +82,26 @@
                 >
                     <img :src="showPassword ? eyeHidden : eyeVisible" alt="" />
                 </button>
+            </label>
+
+            <label
+                class="email-login-field email-login-google-field"
+                :class="{ active: activeField === 'googleCode' }"
+            >
+                <img src="@img/register-code.svg" alt="" class="email-login-field-icon" />
+                <input
+                    v-model="googleCode"
+                    type="text"
+                    name="google_code"
+                    inputmode="numeric"
+                    autocomplete="one-time-code"
+                    maxlength="6"
+                    :placeholder="$t('Google验证码（已绑定用户填写）')"
+                    :aria-label="$t('Google验证码（已绑定用户填写）')"
+                    @focus="activeField = 'googleCode'"
+                    @blur="activeField = ''"
+                    @input="normalizeGoogleCode"
+                />
             </label>
 
             <label
@@ -125,50 +144,6 @@
         </button> -->
         </div>
         </div>
-
-        <!-- 先收集谷歌动态码，再将邮箱、密码和动态码一次性提交登录。 -->
-        <div
-            v-if="showGoogleVerification"
-            class="email-login-google-overlay"
-            role="dialog"
-            aria-modal="true"
-            @touchmove.prevent
-        >
-            <section class="email-login-google-panel">
-                <button
-                    type="button"
-                    class="email-login-google-close df-aic-jucen"
-                    :aria-label="$t('关闭')"
-                    :disabled="isSubmitting"
-                    @click="closeGoogleVerification"
-                >
-                    <van-icon name="cross" size="24" color="#B8C3D4" />
-                </button>
-                <span class="email-login-google-icon df-aic-jucen">
-                    <van-icon name="shield-o" size="42" color="#4C91FF" />
-                </span>
-                <h2>{{ $t('谷歌验证码验证') }}</h2>
-                <p>{{ $t('请输入谷歌验证器中的6位动态码后继续登录') }}</p>
-                <form @submit.prevent="submitGoogleVerification">
-                    <label class="email-login-google-code common-input-focus">
-                        <input
-                            ref="googleCodeInput"
-                            v-model="googleCode"
-                            type="text"
-                            inputmode="numeric"
-                            autocomplete="one-time-code"
-                            maxlength="6"
-                            :placeholder="$t('请输入6位谷歌验证码')"
-                            :aria-label="$t('请输入6位谷歌验证码')"
-                            @input="normalizeGoogleCode"
-                        />
-                    </label>
-                    <button type="submit" class="email-login-google-submit" :disabled="isSubmitting">
-                        {{ $t('验证并登录') }}
-                    </button>
-                </form>
-            </section>
-        </div>
     </div>
 </template>
 
@@ -200,7 +175,6 @@ export default {
             googleCode: '',
             activeField: 'email',
             showPassword: false,
-            showGoogleVerification: false,
             isSubmitting: false,
             rememberCredentials: false,
             eyeVisible,
@@ -243,19 +217,37 @@ export default {
                 this.$toast(this.$t('请输入密码'))
                 return false
             }
+            if (this.googleCode && !/^\d{6}$/.test(this.googleCode)) {
+                this.$toast(this.$t('请输入6位谷歌验证码'))
+                return false
+            }
             return true
         },
-        submitEmailLogin() {
+        async submitEmailLogin() {
             if (this.isSubmitting || !this.validateForm()) return
-            // 账号密码与谷歌验证码统一在“验证并登录”时提交，避免提前发起登录请求。
-            this.openGoogleVerification()
+            this.isSubmitting = true
+            try {
+                const res = await this.$http.post(
+                    '/api/auth/email_login',
+                    this.createEmailLoginPayload(),
+                    {
+                        skipAuth: true,
+                        skipUnauthorizedRedirect: true,
+                    },
+                )
+                await this.completeEmailLogin(res)
+            } catch (error) {
+                console.log('邮箱登录失败', error)
+            } finally {
+                this.isSubmitting = false
+            }
         },
-        createEmailLoginPayload(googleCode = '') {
+        createEmailLoginPayload() {
             const payload = {
                 email: this.email,
                 password: this.password,
             }
-            if (googleCode) payload.google_code = googleCode
+            if (this.googleCode) payload.google_code = this.googleCode
             return payload
         },
         async completeEmailLogin(res) {
@@ -277,78 +269,8 @@ export default {
             this.$router.replace(this.getSafeRedirect() || '/index')
             return true
         },
-        getLoginErrorPayload(error) {
-            const response = error && error.response ? error.response : error
-            return response && response.data !== undefined ? response.data : response
-        },
-        getLoginErrorMessage(error) {
-            const payload = this.getLoginErrorPayload(error)
-            if (typeof payload === 'string') return payload
-            if (payload && typeof payload === 'object') {
-                if (payload.message || payload.msg || payload.error) {
-                    return String(payload.message || payload.msg || payload.error)
-                }
-                if (payload.errors && typeof payload.errors === 'object') {
-                    return Object.keys(payload.errors).map(key => {
-                        const value = payload.errors[key]
-                        return Array.isArray(value) ? value.join(' ') : String(value)
-                    }).join(' ')
-                }
-            }
-            return error && error.message ? String(error.message) : ''
-        },
-        isCredentialError(payload) {
-            const message = this.getLoginErrorMessage(payload)
-            return /(email|account|password|credential|邮箱|账号|密码)/i.test(message)
-                && /(invalid|incorrect|wrong|error|failed|错误|不正确|失败|不存在)/i.test(message)
-        },
-        openGoogleVerification() {
-            this.showGoogleVerification = true
-            this.googleCode = ''
-            this.$nextTick(() => {
-                if (this.$refs.googleCodeInput) this.$refs.googleCodeInput.focus()
-            })
-        },
-        closeGoogleVerification() {
-            this.showGoogleVerification = false
-            this.googleCode = ''
-            this.$nextTick(() => {
-                if (this.$refs.passwordInput) this.$refs.passwordInput.focus()
-            })
-        },
         normalizeGoogleCode(event) {
             this.googleCode = String(event.target.value || '').replace(/\D/g, '').slice(0, 6)
-        },
-        async submitGoogleVerification() {
-            if (this.isSubmitting) return
-            if (!/^\d{6}$/.test(this.googleCode)) {
-                this.$toast(this.$t('请输入6位谷歌验证码'))
-                return
-            }
-
-            this.isSubmitting = true
-            try {
-                const res = await this.$http.post(
-                    '/api/auth/email_login',
-                    this.createEmailLoginPayload(this.googleCode),
-                    {
-                        skipAuth: true,
-                        skipUnauthorizedRedirect: true,
-                    },
-                )
-                if (await this.completeEmailLogin(res)) return
-                if (this.isCredentialError(res.data)) {
-                    this.closeGoogleVerification()
-                }
-            } catch (error) {
-                console.log('谷歌验证码登录验证失败', error)
-                const payload = this.getLoginErrorPayload(error)
-                if (this.isCredentialError(payload)) {
-                    this.closeGoogleVerification()
-                }
-            } finally {
-                this.isSubmitting = false
-            }
         },
         getSafeRedirect() {
             const redirect = String(this.$route.query.redirect || '')
@@ -521,6 +443,10 @@ export default {
                 top: 580px;
             }
 
+            &.email-login-google-field {
+                top: 696px;
+            }
+
             &.active {
                 border-color: #1261F3;
                 box-shadow: 0 4px 20px rgba(0, 140, 255, 0.20);
@@ -566,7 +492,7 @@ export default {
 
         .email-login-forgot {
             position: absolute;
-            top: 688px;
+            top: 804px;
             right: 60px;
             height: 34px;
             gap: 8px;
@@ -582,7 +508,7 @@ export default {
 
         .email-login-remember {
             position: absolute;
-            top: 688px;
+            top: 804px;
             left: 60px;
             height: 34px;
             gap: 12px;
@@ -623,7 +549,7 @@ export default {
 
         .email-login-submit {
             position: absolute;
-            top: 782px;
+            top: 898px;
             left: 60px;
             width: 630px;
             height: 88px;
@@ -647,7 +573,7 @@ export default {
 
     .email-login-register {
         position: absolute;
-        top: 900px;
+        top: 1016px;
         left: 0;
         width: 750px;
         color: rgba(184, 195, 212, 0.50);
@@ -732,123 +658,5 @@ export default {
         }
     }
 
-    // 登录二次验证：仅在账号密码校验通过且后端要求时展示。
-    .email-login-google-overlay {
-        position: fixed;
-        top: 0;
-        bottom: 0;
-        left: 50%;
-        z-index: 1000;
-        display: flex;
-        width: 750px;
-        max-width: 100vw;
-        align-items: center;
-        justify-content: center;
-        padding: 30px;
-        box-sizing: border-box;
-        transform: translateX(-50%);
-        background: rgba(0, 3, 12, 0.84);
-        backdrop-filter: blur(14px);
-        -webkit-backdrop-filter: blur(14px);
-    }
-    .email-login-google-panel {
-        position: relative;
-        width: 630px;
-        max-width: 100%;
-        padding: 56px 48px 48px;
-        box-sizing: border-box;
-        border: 2px solid #1B6CFF;
-        border-radius: 32px;
-        background: linear-gradient(180deg, rgba(7, 27, 67, 0.98), rgba(1, 10, 31, 0.98));
-        box-shadow: 0 22px 70px rgba(0, 74, 255, 0.28);
-        text-align: center;
-        z-index: 9999;
-
-        .email-login-google-close {
-            position: absolute;
-            top: 24px;
-            right: 24px;
-            width: 56px;
-            height: 56px;
-            border: 0;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.08);
-
-            &:disabled {
-                opacity: 0.45;
-            }
-        }
-
-        .email-login-google-icon {
-            width: 96px;
-            height: 96px;
-            margin: 0 auto 28px;
-            border: 2px solid rgba(76, 145, 255, 0.72);
-            border-radius: 50%;
-            background: rgba(76, 145, 255, 0.12);
-        }
-
-        h2 {
-            margin: 0;
-            font-size: 34px;
-            line-height: 48px;
-        }
-
-        p {
-            margin: 20px 0 0;
-            color: rgba(184, 195, 212, 0.78);
-            font-size: 24px;
-            line-height: 36px;
-        }
-
-        form {
-            margin-top: 42px;
-
-            .email-login-google-code {
-                display: block;
-                width: 100%;
-                height: 88px;
-                box-sizing: border-box;
-                border: 2px solid rgba(76, 145, 255, 0.72);
-                border-radius: 20px;
-                background: rgba(255, 255, 255, 0.10);
-
-                input {
-                    display: block;
-                    width: 100%;
-                    height: 100%;
-                    padding: 0 28px;
-                    box-sizing: border-box;
-                    color: #FFFFFF;
-                    font-size: 28px;
-                    caret-color: #4C91FF;
-
-                    &::placeholder {
-                        color: rgba(184, 195, 212, 0.50);
-                    }
-                }
-            }
-
-            .email-login-google-submit {
-                width: 100%;
-                height: 88px;
-                margin-top: 24px;
-                border: 0;
-                border-radius: 999px;
-                background: #1261F3;
-                color: #FFFFFF;
-                font-size: 30px;
-                line-height: 88px;
-
-                &:active {
-                    transform: scale(0.98);
-                }
-
-                &:disabled {
-                    opacity: 0.65;
-                }
-            }
-        }
-    }
 }
 </style>
