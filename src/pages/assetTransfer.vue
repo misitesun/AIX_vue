@@ -59,7 +59,7 @@
                         v-model.trim="address"
                         type="text"
                         class="transfer-field-input transfer-address-input"
-                        :placeholder="$t('请输入接收账号')"
+                        :placeholder="$t('请输入账号')"
                         autocomplete="off"
                     />
                 </div>
@@ -307,7 +307,7 @@ export default {
                 return
             }
             if (!this.address) {
-                this.$toast(this.$t('请输入接收账号'))
+                this.$toast(this.$t('请输入账号'))
                 return
             }
 

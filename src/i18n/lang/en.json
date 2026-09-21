@@ -330,7 +330,7 @@
     "提现数量低于最低限额": "The withdrawal amount is below the minimum",
     "提现申请已提交": "Withdrawal request submitted",
     "接收账号": "Recipient account",
-    "请输入接收账号": "Enter the recipient account",
+    "请输入账号": "Enter account",
     "确认划转": "Confirm transfer",
     "暂未开放划转": "Transfers are not available yet",
     "划转数量低于最低限额": "The transfer amount is below the minimum",
