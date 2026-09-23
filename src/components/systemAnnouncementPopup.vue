@@ -121,7 +121,7 @@ export default {
 </script>
 
 <style scoped lang="less">
-// 首页系统公告：按 750px Figma 节点坐标还原弹窗和两种按钮状态。
+// 首页系统公告：保留 Figma 视觉尺寸，标题区域使用正常文档流适配动态文案。
 .system-announcement-overlay {
     position: fixed;
     top: 0;
@@ -137,9 +137,11 @@ export default {
         position: absolute;
         top: 427px;
         left: 60px;
+        display: flex;
         width: 630px;
         min-height: 507px;
-        padding: 204px 36px 36px;
+        flex-direction: column;
+        padding: 92px 36px 36px;
         border: 4px solid var(--app-primary-strong);
         border-radius: 40px;
         background: #000A25;
@@ -164,28 +166,27 @@ export default {
         }
 
         .system-announcement-title {
-            position: absolute;
-            top: 92px;
-            left: 239px;
-            width: 144px;
-            height: 50px;
+            width: 100%;
+            min-height: 50px;
             margin: 0;
             color: var(--app-text);
             font-size: 36px;
             font-weight: 500;
             line-height: 50px;
             text-align: center;
-            white-space: nowrap;
+            overflow-wrap: anywhere;
+            word-break: break-word;
+            white-space: normal;
         }
 
         .system-announcement-divider {
-            position: absolute;
-            top: 154px;
-            left: 0;
-            width: 622px;
+            position: relative;
+            width: calc(100% + 72px);
             height: 20px;
+            margin: 12px -36px 30px;
             overflow: hidden;
             pointer-events: none;
+            flex: none;
 
             img {
                 position: absolute;
@@ -199,7 +200,7 @@ export default {
         }
 
         .system-announcement-content {
-            width: 550px;
+            width: 100%;
 
             .system-announcement-greeting {
                 height: 39px;
@@ -237,7 +238,7 @@ export default {
 
         .system-announcement-action {
             display: block;
-            width: 550px;
+            width: 100%;
             height: 80px;
             margin: 40px 0 0;
             padding: 0;
