@@ -69,7 +69,7 @@
                             <img src="@img/home-more-arrow.png" alt="" />
                         </span>
                     </button>
-                    <button
+                    <!-- <button
                         type="button"
                         class="settings-item settings-account-item df-aic-jusb"
                         @click="handleAccountBinding('address')"
@@ -89,7 +89,7 @@
                             </span>
                             <img src="@img/home-more-arrow.png" alt="" />
                         </span>
-                    </button>
+                    </button> -->
                     <button
                         v-if="account.email"
                         type="button"
