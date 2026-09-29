@@ -2,27 +2,36 @@
     <main ref="videoPage" class="checkin-video-page">
         <!-- 模块一：接口动态视频，不展示接口返回的封面或简介信息。 -->
         <video
-            v-if="hasVideo && !hasVideoError"
+            v-if="hasVideo && !useNativeVideo"
+            v-show="!hasVideoError"
             ref="videoPlayer"
             class="checkin-video-player"
             :src="videoInfo.video_url"
-            autoplay
             loop
             playsinline
             webkit-playsinline
             preload="auto"
             disablepictureinpicture
             controlslist="nodownload noplaybackrate noremoteplayback"
-            @canplay="playVideo"
-            @play="startCountdown"
+            @canplay="handleCanPlay"
+            @playing="startCountdown"
             @pause="pauseCountdown"
+            @waiting="pauseCountdown"
+            @seeking="pauseCountdown"
             @error="handleVideoError"
             @webkitbeginfullscreen="syncFullscreenState"
             @webkitendfullscreen="syncFullscreenState"
         ></video>
 
-        <section v-else class="checkin-video-fallback">
-            <p>{{ $t('签到视频暂未配置') }}</p>
+        <section v-if="useNativeVideo || isLoading || !hasVideo || hasVideoError" class="checkin-video-fallback">
+            <p v-if="isLoading || (useNativeVideo && !hasVideoError)">{{ $t('加载中 ...') }}</p>
+            <template v-else-if="hasVideoError">
+                <p>{{ $t('视频播放失败，请稍后重试') }}</p>
+                <button type="button" class="checkin-video-retry" @click="retryVideo">
+                    {{ $t('重新播放') }}
+                </button>
+            </template>
+            <p v-else>{{ $t('签到视频暂未配置') }}</p>
         </section>
 
         <!-- 模块二：视频叠层，保证关闭控件在浅色视频上仍清晰可读。 -->
@@ -56,11 +65,11 @@
 
         <!-- 自动播放被浏览器拦截时，提供无原生控件的继续播放入口。 -->
         <button
-            v-if="hasVideo && !hasVideoError && !isPlaying && !canClose"
+            v-if="!useNativeVideo && hasVideo && !hasVideoError && !isPlaying && !canClose"
             type="button"
             class="checkin-video-play"
             :aria-label="$t('观看视频进行打卡')"
-            @click="playVideo"
+            @click="playVideo(true)"
         >
             <img src="@img/home-checkin-play.png" alt="" />
         </button>
@@ -68,6 +77,13 @@
 </template>
 
 <script>
+import {
+    NATIVE_CHECKIN_VIDEO_EVENT,
+    supportsNativeCheckinVideo,
+    sendNativeCheckinVideo,
+    createNativeCheckinRequestId,
+} from '@/utils/nativeCheckinVideo'
+
 const CHECKIN_VIDEO_INFO_KEY = 'aix-checkin-video-info'
 const CHECKIN_SUCCESS_PENDING_KEY = 'aix-checkin-success-pending'
 const CHECKIN_SUCCESS_EVENT = 'aix-checkin-success'
@@ -85,9 +101,16 @@ export default {
             isLoading: true,
             isSubmitting: false,
             hasVideoError: false,
+            isPlayPending: false,
+            needsUserPlay: false,
             countdownTimer: null,
             fullscreenSupported: false,
             isFullscreen: false,
+            useNativeVideo: false,
+            nativeRequestId: '',
+            nativeVideoPending: false,
+            nativeVideoPresented: false,
+            nativeOpenTimer: null,
         }
     },
     computed: {
@@ -96,6 +119,7 @@ export default {
         },
         // 配置加载完成后，只有倒计时结束（或视频不可用）才允许离开。
         canClose() {
+            if (this.useNativeVideo && (this.nativeVideoPending || this.nativeVideoPresented)) return false
             return !this.isLoading && (!this.hasVideo || this.hasVideoError || this.remainingSeconds <= 0)
         },
         formattedRemainingSeconds() {
@@ -103,10 +127,21 @@ export default {
         },
     },
     mounted() {
+        window.addEventListener(NATIVE_CHECKIN_VIDEO_EVENT, this.handleNativeVideoResult)
         this.addFullscreenListeners()
         this.loadVideoInfo()
     },
     beforeDestroy() {
+        this._videoDisposed = true
+        window.removeEventListener(NATIVE_CHECKIN_VIDEO_EVENT, this.handleNativeVideoResult)
+        this.clearNativeOpenTimer()
+        if (this.nativeRequestId && supportsNativeCheckinVideo()) {
+            try {
+                sendNativeCheckinVideo({ type: 'cancelCheckinVideo', requestId: this.nativeRequestId })
+            } catch (error) {
+                console.log('[CheckinVideo] 取消原生播放器失败', error)
+            }
+        }
         this.stopCountdown()
         this.pauseVideo()
         this.exitFullscreen()
@@ -143,6 +178,7 @@ export default {
             }
         },
         applyVideoInfo(info) {
+            this.useNativeVideo = supportsNativeCheckinVideo()
             this.videoInfo = {
                 video_url: String(info.video_url || ''),
                 watch_seconds: Math.max(0, Math.ceil(Number(info.watch_seconds) || 0)),
@@ -151,27 +187,154 @@ export default {
             this.hasVideoError = false
             this.isLoading = false
 
+            if (this.useNativeVideo && this.hasVideo) {
+                this.openNativeVideo()
+                return
+            }
+
             this.$nextTick(() => {
                 this.fullscreenSupported = this.hasFullscreenSupport()
                 if (this.hasVideo) this.playVideo()
             })
         },
-        playVideo() {
+        openNativeVideo() {
+            if (this.nativeVideoPending || this.nativeVideoPresented || !this.hasVideo) return
+            this.nativeRequestId = createNativeCheckinRequestId()
+            this.nativeVideoPending = true
+            this.hasVideoError = false
+            // opened 回执用于确认 App 已接收；旧 App 不声明能力，不会进入此流程。
+            this.nativeOpenTimer = window.setTimeout(() => {
+                if (!this.nativeVideoPending || this._videoDisposed) return
+                try {
+                    sendNativeCheckinVideo({ type: 'cancelCheckinVideo', requestId: this.nativeRequestId })
+                } catch (error) {
+                    console.log('[CheckinVideo] 原生播放器应答超时', error)
+                }
+                this.failNativeVideo()
+            }, 10000)
+            try {
+                sendNativeCheckinVideo({
+                    type: 'openCheckinVideo',
+                    requestId: this.nativeRequestId,
+                    videoUrl: new URL(this.videoInfo.video_url, window.location.href).href,
+                    watchSeconds: this.videoInfo.watch_seconds,
+                    labels: {
+                        close: this.$t('关闭视频'),
+                        play: this.$t('观看视频进行打卡'),
+                        loading: this.$t('加载中 ...'),
+                        error: this.$t('视频播放失败，请稍后重试'),
+                        retry: this.$t('重新播放'),
+                        watchRequired: this.$t('请完整观看签到视频'),
+                    },
+                })
+            } catch (error) {
+                console.log('[CheckinVideo] 打开原生播放器失败', error)
+                this.failNativeVideo()
+            }
+        },
+        clearNativeOpenTimer() {
+            if (this.nativeOpenTimer) window.clearTimeout(this.nativeOpenTimer)
+            this.nativeOpenTimer = null
+        },
+        failNativeVideo() {
+            this.clearNativeOpenTimer()
+            this.nativeRequestId = ''
+            this.nativeVideoPending = false
+            this.nativeVideoPresented = false
+            this.hasVideoError = true
+            this.$toast(this.$t('视频播放失败，请稍后重试'))
+        },
+        handleNativeVideoResult(event) {
+            const result = event && event.detail
+            if (this._videoDisposed || !result || !this.nativeRequestId
+                || result.requestId !== this.nativeRequestId) return
+            if (result.status === 'opened') {
+                this.clearNativeOpenTimer()
+                this.nativeVideoPending = false
+                this.nativeVideoPresented = true
+                return
+            }
+            if (result.status === 'completed') {
+                const watched = Number(result.watchedMilliseconds)
+                if (!Number.isFinite(watched) || watched < this.videoInfo.watch_seconds * 1000) {
+                    this.failNativeVideo()
+                    return
+                }
+                this.clearNativeOpenTimer()
+                // 清除本次请求后再关闭，重复回调或上一轮请求不能再次提交签到。
+                this.nativeRequestId = ''
+                this.nativeVideoPending = false
+                this.nativeVideoPresented = false
+                this.remainingSeconds = 0
+                this.handleClose()
+                return
+            }
+            if (result.status === 'cancelled') {
+                this.clearNativeOpenTimer()
+                this.nativeRequestId = ''
+                this.nativeVideoPending = false
+                this.nativeVideoPresented = false
+                this.hasVideoError = true
+                this.handleClose()
+                return
+            }
+            if (result.status === 'error') this.failNativeVideo()
+        },
+        handleCanPlay() {
+            if (!this.needsUserPlay) this.playVideo()
+        },
+        playVideo(fromUser = false) {
             const video = this.$refs.videoPlayer
-            if (!video || this.canClose || this.isSubmitting) return
+            if (!video || this.hasVideoError || this.isSubmitting || this.isPlayPending) return
+            if (!fromUser && this.needsUserPlay) return
+            if (!video.paused && !video.ended) return
 
             // 默认使用有声播放；若浏览器拦截有声自动播放，会展示播放入口供用户手动开启。
             video.muted = false
             video.defaultMuted = false
             video.volume = 1
 
-            const playPromise = video.play()
-            if (playPromise && typeof playPromise.catch === 'function') {
-                playPromise.catch((error) => {
-                    console.log('签到视频播放失败', error)
-                    this.isPlaying = false
+            this.needsUserPlay = false
+            this.isPlayPending = true
+            const attempt = (this._videoPlayAttempt || 0) + 1
+            this._videoPlayAttempt = attempt
+            try {
+                const playPromise = video.play()
+                Promise.resolve(playPromise).then(() => {
+                    if (!this._videoDisposed && this._videoPlayAttempt === attempt) this.isPlayPending = false
+                }, (error) => {
+                    if (this._videoDisposed || this._videoPlayAttempt !== attempt) return
+                    this.isPlayPending = false
+                    this.handlePlayFailure(error)
                 })
+            } catch (error) {
+                this.isPlayPending = false
+                this.handlePlayFailure(error)
             }
+        },
+        handlePlayFailure(error) {
+            this.pauseCountdown()
+            this.needsUserPlay = true
+            // 用户手势限制和 load()/pause() 中断不代表地址失效，保留手动播放入口。
+            if (error && (error.name === 'NotAllowedError' || error.name === 'AbortError')) {
+                console.log('[CheckinVideo] 播放需要用户操作或已被中断', error.name)
+                return
+            }
+            this.handleVideoError(error)
+        },
+        retryVideo() {
+            if (this.useNativeVideo) {
+                this.openNativeVideo()
+                return
+            }
+            const video = this.$refs.videoPlayer
+            if (!video || this.isPlayPending) return
+            this.hasVideoError = false
+            this.needsUserPlay = false
+            this.pauseCountdown()
+            // 在同一次点击中重新加载并播放，保留 WebView 要求的用户手势。
+            video.load()
+            this.playVideo(true)
         },
         hasFullscreenSupport() {
             const page = this.$refs.videoPage
@@ -296,12 +459,16 @@ export default {
         },
         // 仅在视频实际播放时递减，暂停或被系统中断时会同步停止计时。
         startCountdown() {
+            const video = this.$refs.videoPlayer
+            if (!video || video.paused || video.seeking || this.hasVideoError) return
             this.isPlaying = true
             if (this.isSubmitting || this.remainingSeconds <= 0) return
             if (this.countdownTimer) return
 
             this.countdownTimer = window.setInterval(() => {
-                if (!this.isPlaying || this.isSubmitting) return
+                const player = this.$refs.videoPlayer
+                if (!this.isPlaying || this.isSubmitting || !player || player.paused
+                    || player.seeking || player.readyState < 3 || document.hidden) return
 
                 this.remainingSeconds = Math.max(0, this.remainingSeconds - 1)
                 if (this.remainingSeconds === 0) this.stopCountdown()
@@ -345,7 +512,17 @@ export default {
             }
         },
         handleVideoError(error) {
-            console.log('签到视频加载失败', error)
+            const video = this.$refs.videoPlayer
+            const mediaError = video && video.error
+            console.log('[CheckinVideo] 签到视频加载失败 ' + JSON.stringify({
+                code: mediaError ? mediaError.code : null,
+                message: mediaError ? mediaError.message : String(error && error.message || ''),
+                currentSrc: video && video.currentSrc,
+                currentTime: video && video.currentTime,
+                readyState: video && video.readyState,
+                networkState: video && video.networkState,
+            }))
+            this.isPlayPending = false
             this.hasVideoError = true
             this.pauseCountdown()
             this.$toast(this.$t('视频播放失败，请稍后重试'))
@@ -449,6 +626,17 @@ export default {
             position: relative;
             z-index: 1;
             margin: 0;
+        }
+
+        .checkin-video-retry {
+            position: relative;
+            z-index: 2;
+            padding: 14px 30px;
+            border: 1px solid rgba(255, 255, 255, 0.28);
+            border-radius: 999px;
+            color: #FFFFFF;
+            font: inherit;
+            background: rgba(255, 255, 255, 0.1);
         }
     }
 
