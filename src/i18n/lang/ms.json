@@ -483,5 +483,8 @@
     "转出记录": "Rekod pindahan keluar",
     "转入记录": "Rekod pindahan masuk",
     "来源账号": "Akaun pengirim",
-    "Google验证码（已绑定用户填写）": "Kod Google Authenticator (untuk pengguna yang telah dipautkan)"
+    "Google验证码（已绑定用户填写）": "Kod Google Authenticator (untuk pengguna yang telah dipautkan)",
+    "当前等级": "Tahap semasa",
+    "下一级": "Tahap seterusnya",
+    "距离下一等级还差 {amount} 社区业绩": "Perlu {amount} lagi prestasi komuniti untuk tahap seterusnya"
 }

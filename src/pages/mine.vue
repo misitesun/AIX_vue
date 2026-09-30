@@ -34,6 +34,28 @@
                 </span>
             </div>
 
+            <!-- 等级升级条件：社区和个人业绩来自用户统计接口。 -->
+            <div class="mine-level-progress">
+                <div class="mine-level-heading df-aic-jusb">
+                    <div>{{ $t('当前等级') }} <span>{{ profile.level }}</span></div>
+                    <div>{{ $t('下一级') }} <span>{{ levelProgress.nextLevel }}</span></div>
+                </div>
+                <div class="mine-level-track" aria-hidden="true">
+                    <div class="mine-level-fill" :style="{ width: levelProgress.progressWidth }"></div>
+                </div>
+                <div class="mine-level-requirement df-aic-jusb">
+                    <span>{{ $t('距离下一等级还差 {amount} 社区业绩', { amount: levelProgress.remainingPerformance }) }}</span>
+                    <span class="mine-level-value"><span>{{ levelProgress.areaPerformance }}</span>/{{ levelProgress.requiredAreaPerformance }}</span>
+                </div>
+                <div class="mine-level-miners df-aic-jusb">
+                    <span>{{ $t('个人业绩') }}</span>
+                    <div class="mine-level-miners-result df-aic">
+                        <span class="mine-level-value"><span>{{ levelProgress.personalPerformance }}</span>/{{ levelProgress.requiredPersonalPerformance }}</span>
+                        <span v-if="levelProgress.personalCompleted" class="mine-level-completed">{{ $t('已完成') }}</span>
+                    </div>
+                </div>
+            </div>
+
             <button type="button" class="mine-invite-code df-aic" @click="copyText(profile.inviteCode)">
                 <span>{{ $t('邀请码') }} {{ profile.inviteCode }}</span>
                 <img src="@img/mine-copy-code.svg" alt="" />
@@ -223,6 +245,7 @@
 </template>
 
 <script>
+import BigNumber from 'bignumber.js'
 import HomeNavBar from '@/components/homeNavBar'
 import HomeTabBar from '@/components/homeTabBar'
 import checkinDoneIcon from '@img/mine-checkin-done.svg'
@@ -247,6 +270,11 @@ export default {
                 levelIcon: '',
                 inviteCode: this.$t('无数据'),
                 inviteUrl: this.$t('无数据'),
+            },
+            statistics: {
+                xq_kpi: null,
+                kpi: null,
+                upgrade_level: null,
             },
             performance: {
                 team: this.$t('无数据'),
@@ -280,8 +308,34 @@ export default {
         }
     },
     computed: {
+        levelProgress() {
+            const upgradeLevel = this.statistics.upgrade_level || {}
+            const area = new BigNumber(this.statistics.xq_kpi)
+            const requiredArea = new BigNumber(upgradeLevel.xq_kpi)
+            const personal = new BigNumber(this.statistics.kpi)
+            const requiredPersonal = new BigNumber(upgradeLevel.kpi)
+            const hasArea = area.isFinite() && requiredArea.isFinite()
+            const hasPersonal = personal.isFinite() && requiredPersonal.isFinite()
+            const displayValue = value => value === undefined || value === null || value === ''
+                ? this.$t('无数据')
+                : value
+            // 保留接口原值用于展示，只对差额、进度和达标判断进行计算。
+            const progress = hasArea && requiredArea.gt(0)
+                ? BigNumber.minimum(100, BigNumber.maximum(0, area.div(requiredArea).times(100)))
+                : new BigNumber(0)
+            return {
+                nextLevel: upgradeLevel.name || this.$t('无数据'),
+                remainingPerformance: hasArea ? requiredArea.minus(area).toFixed() : this.$t('无数据'),
+                areaPerformance: displayValue(this.statistics.xq_kpi),
+                requiredAreaPerformance: displayValue(upgradeLevel.xq_kpi),
+                progressWidth: `${progress.toFixed()}%`,
+                personalPerformance: displayValue(this.statistics.kpi),
+                requiredPersonalPerformance: displayValue(upgradeLevel.kpi),
+                personalCompleted: hasPersonal && requiredPersonal.gte(0) && personal.gte(requiredPersonal),
+            }
+        },
         pageHeight() {
-            const designHeight = Math.max(2060, 1380 + Math.max(this.members.length, 2) * 373)
+            const designHeight = Math.max(2270, 1590 + Math.max(this.members.length, 2) * 373)
             return `${designHeight / 75}rem`
         },
     },
@@ -324,6 +378,11 @@ export default {
             try {
                 const res = await this.$http.get('/api/users/my/statistics')
                 if (res.code == 200 && res.data) {
+                    this.statistics = {
+                        xq_kpi: res.data.xq_kpi,
+                        kpi: res.data.kpi,
+                        upgrade_level: res.data.upgrade_level,
+                    }
                     this.performance = {
                         team: res.data.team_kpi || this.$t('无数据'),
                         area: res.data.xq_kpi || this.$t('无数据'),
@@ -542,7 +601,7 @@ export default {
         top: 200px;
         left: 30px;
         width: 690px;
-        height: 217px;
+        height: 427px;
 
         .mine-profile-heading {
             width: 690px;
@@ -559,9 +618,72 @@ export default {
             }
         }
 
+        .mine-level-progress {
+            position: absolute;
+            top: 90px;
+            left: 0;
+            width: 690px;
+            color: rgba(255, 255, 255, 0.50);
+            font-size: 24px;
+            line-height: 36px;
+
+            .mine-level-heading {
+                gap: 20px;
+
+                span {
+                    margin-left: 6px;
+                    color: #FFFFFF;
+                }
+            }
+
+            .mine-level-track {
+                height: 14px;
+                margin-top: 12px;
+                overflow: hidden;
+                border-radius: 999px;
+                background: rgba(255, 255, 255, 0.10);
+
+                .mine-level-fill {
+                    width: 0;
+                    height: 100%;
+                    border-radius: inherit;
+                    background: linear-gradient(90deg, #1261F3 0%, #00F2DC 100%);
+                }
+            }
+
+            .mine-level-requirement {
+                margin-top: 12px;
+                gap: 16px;
+                align-items: flex-start;
+            }
+
+            .mine-level-value {
+                flex-shrink: 0;
+                white-space: nowrap;
+
+                span {
+                    color: #FFFFFF;
+                }
+            }
+
+            .mine-level-miners {
+                margin-top: 22px;
+                gap: 16px;
+
+                .mine-level-miners-result {
+                    flex-shrink: 0;
+                    gap: 12px;
+                }
+
+                .mine-level-completed {
+                    color: #2DDAFF;
+                }
+            }
+        }
+
         .mine-invite-code {
             position: absolute;
-            top: 74px;
+            top: 284px;
             left: 0;
             height: 39px;
             gap: 12px;
@@ -578,7 +700,7 @@ export default {
 
         .mine-invite-link {
             position: absolute;
-            top: 143px;
+            top: 353px;
             left: 0;
             width: 690px;
             height: 74px;
@@ -620,7 +742,7 @@ export default {
     // 模块三：三项业绩统计
     .mine-performance {
         position: absolute;
-        top: 457px;
+        top: 667px;
         left: 31px;
         display: grid;
         width: 688px;
@@ -677,7 +799,7 @@ export default {
     // 模块四：直推人数和团队总人数
     .mine-team-summary {
         position: absolute;
-        top: 665px;
+        top: 875px;
         left: 30px;
         display: flex;
         width: 690px;
@@ -835,7 +957,7 @@ export default {
     // 模块五：入金订单入口
     .mine-deposit-card {
         position: absolute;
-        top: 921px;
+        top: 1131px;
         left: 30px;
         width: 690px;
         height: 198px;
@@ -890,7 +1012,7 @@ export default {
     // 模块六：成员列表
     .mine-members {
         position: absolute;
-        top: 1149px;
+        top: 1359px;
         left: 30px;
         width: 690px;
 

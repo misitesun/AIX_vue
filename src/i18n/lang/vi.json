@@ -483,5 +483,8 @@
     "转出记录": "Lịch sử chuyển đi",
     "转入记录": "Lịch sử chuyển vào",
     "来源账号": "Tài khoản gửi",
-    "Google验证码（已绑定用户填写）": "Mã Google Authenticator (dành cho người dùng đã liên kết)"
+    "Google验证码（已绑定用户填写）": "Mã Google Authenticator (dành cho người dùng đã liên kết)",
+    "当前等级": "Cấp hiện tại",
+    "下一级": "Cấp tiếp theo",
+    "距离下一等级还差 {amount} 社区业绩": "Cần thêm {amount} hiệu suất cộng đồng để lên cấp tiếp theo"
 }

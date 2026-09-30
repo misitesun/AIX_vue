@@ -483,5 +483,8 @@
     "转出记录": "Outgoing transfer",
     "转入记录": "Incoming transfer",
     "来源账号": "Source account",
-    "Google验证码（已绑定用户填写）": "Google Authenticator code (for linked users)"
+    "Google验证码（已绑定用户填写）": "Google Authenticator code (for linked users)",
+    "当前等级": "Current level",
+    "下一级": "Next level",
+    "距离下一等级还差 {amount} 社区业绩": "{amount} more community performance to reach the next level"
 }
