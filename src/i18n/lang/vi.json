@@ -486,5 +486,16 @@
     "Google验证码（已绑定用户填写）": "Mã Google Authenticator (dành cho người dùng đã liên kết)",
     "当前等级": "Cấp hiện tại",
     "下一级": "Cấp tiếp theo",
-    "距离下一等级还差 {amount} 社区业绩": "Cần thêm {amount} hiệu suất cộng đồng để lên cấp tiếp theo"
+    "距离下一等级还差 {amount} 社区业绩": "Cần thêm {amount} hiệu suất cộng đồng để lên cấp tiếp theo",
+    "申请赎回": "Đăng ký hoàn vốn",
+    "审核中": "Đang xét duyệt",
+    "已赎回": "Đã hoàn vốn",
+    "已驳回": "Đã từ chối",
+    "重新申请": "Đăng ký lại",
+    "驳回原因": "Lý do từ chối",
+    "申请时间": "Thời gian đăng ký",
+    "审核时间": "Thời gian xét duyệt",
+    "确定申请赎回该订单吗？审核通过后将退回本金。": "Bạn có muốn đăng ký hoàn vốn cho đơn này không? Vốn gốc sẽ được hoàn trả sau khi được duyệt.",
+    "赎回申请已提交": "Đã gửi yêu cầu hoàn vốn",
+    "赎回申请失败，请重试": "Gửi yêu cầu hoàn vốn thất bại. Vui lòng thử lại"
 }

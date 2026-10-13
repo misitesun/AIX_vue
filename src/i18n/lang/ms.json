@@ -486,5 +486,16 @@
     "Google验证码（已绑定用户填写）": "Kod Google Authenticator (untuk pengguna yang telah dipautkan)",
     "当前等级": "Tahap semasa",
     "下一级": "Tahap seterusnya",
-    "距离下一等级还差 {amount} 社区业绩": "Perlu {amount} lagi prestasi komuniti untuk tahap seterusnya"
+    "距离下一等级还差 {amount} 社区业绩": "Perlu {amount} lagi prestasi komuniti untuk tahap seterusnya",
+    "申请赎回": "Mohon penebusan",
+    "审核中": "Dalam semakan",
+    "已赎回": "Telah ditebus",
+    "已驳回": "Ditolak",
+    "重新申请": "Mohon semula",
+    "驳回原因": "Sebab penolakan",
+    "申请时间": "Masa permohonan",
+    "审核时间": "Masa semakan",
+    "确定申请赎回该订单吗？审核通过后将退回本金。": "Mohon penebusan pesanan ini? Modal pokok akan dipulangkan selepas diluluskan.",
+    "赎回申请已提交": "Permohonan penebusan telah dihantar",
+    "赎回申请失败，请重试": "Permohonan penebusan gagal. Sila cuba lagi"
 }

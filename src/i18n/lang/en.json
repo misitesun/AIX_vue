@@ -486,5 +486,16 @@
     "Google验证码（已绑定用户填写）": "Google Authenticator code (for linked users)",
     "当前等级": "Current level",
     "下一级": "Next level",
-    "距离下一等级还差 {amount} 社区业绩": "{amount} more community performance to reach the next level"
+    "距离下一等级还差 {amount} 社区业绩": "{amount} more community performance to reach the next level",
+    "申请赎回": "Apply for redemption",
+    "审核中": "Under review",
+    "已赎回": "Redeemed",
+    "已驳回": "Rejected",
+    "重新申请": "Apply again",
+    "驳回原因": "Rejection reason",
+    "申请时间": "Application time",
+    "审核时间": "Review time",
+    "确定申请赎回该订单吗？审核通过后将退回本金。": "Apply to redeem this order? Your principal will be returned after approval.",
+    "赎回申请已提交": "Redemption request submitted",
+    "赎回申请失败，请重试": "Redemption request failed. Please try again"
 }

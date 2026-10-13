@@ -80,6 +80,38 @@
                                     <div class="deposit-order-metric-label">{{ $t('周期') }}</div>
                                 </div>
                             </div>
+
+                            <div v-if="hasManualRedeem(order)" class="deposit-order-redeem">
+                                <div class="deposit-order-redeem-heading df-aic-jusb">
+                                    <span v-if="order.redeem_status == 1" class="deposit-order-redeem-status">
+                                        {{ $t('审核中') }}
+                                    </span>
+                                    <span v-else-if="order.redeem_status == 2" class="deposit-order-redeem-status">
+                                        {{ $t('已赎回') }}
+                                    </span>
+                                    <div v-else-if="order.redeem_status == 3" class="deposit-order-redeem-rejection">
+                                        <span class="deposit-order-redeem-status rejected">{{ $t('已驳回') }}</span>
+                                        <p v-if="order.redeem_reason" class="deposit-order-redeem-reason">
+                                            {{ $t('驳回原因') }}：{{ order.redeem_reason }}
+                                        </p>
+                                    </div>
+                                    <button
+                                        v-if="canApplyRedeem(order)"
+                                        type="button"
+                                        class="deposit-order-redeem-button"
+                                        :disabled="redeemingOrderId !== null"
+                                        @click="confirmRedeem(order)"
+                                    >
+                                        {{ redeemingOrderId === order.id ? $t('提交中') : (order.redeem_status == 3 ? $t('重新申请') : $t('申请赎回')) }}
+                                    </button>
+                                </div>
+                                <div v-if="order.redeem_apply_at" class="deposit-order-redeem-time">
+                                    {{ $t('申请时间') }}：{{ order.redeem_apply_at }}
+                                </div>
+                                <div v-if="order.redeem_audit_at" class="deposit-order-redeem-time">
+                                    {{ $t('审核时间') }}：{{ order.redeem_audit_at }}
+                                </div>
+                            </div>
                         </article>
                     </div>
                     <no-data v-else></no-data>
@@ -90,6 +122,8 @@
 </template>
 
 <script>
+import { Toast } from 'vant'
+
 export default {
     name: 'DepositOrders',
     data() {
@@ -113,6 +147,7 @@ export default {
                 },
             },
             orders: [],
+            redeemingOrderId: null,
         }
     },
     methods: {
@@ -134,7 +169,8 @@ export default {
                 const source = res.code == 200 && res.data && Array.isArray(res.data.orders) ? res.data.orders : []
                 const currentPageOrders = source.map(order => ({
                     id: order.id,
-                    status: Number(order.status) === 1 ? 'ongoing' : 'completed',
+                    status: order.status,
+                    product: order.product,
                     productName: order.product && order.product.name ? order.product.name : this.$t('无数据'),
                     createdAt: order.created_at,
                     totalIncome: order.release_amount,
@@ -142,6 +178,12 @@ export default {
                     todayIncome: order.today_amount,
                     elapsedDays: order.release_count,
                     cycleDays: order.output_count,
+                    is_redem: order.is_redem,
+                    is_manual_redeem: order.is_manual_redeem,
+                    redeem_status: order.redeem_status,
+                    redeem_reason: order.redeem_reason,
+                    redeem_apply_at: order.redeem_apply_at,
+                    redeem_audit_at: order.redeem_audit_at,
                 }))
                 if (page.num === 1) this.orders = []
                 this.orders = this.orders.concat(currentPageOrders)
@@ -149,6 +191,57 @@ export default {
             } catch (error) {
                 console.log('理财订单加载失败', error)
                 mescroll.endErr()
+            }
+        },
+        hasManualRedeem(order) {
+            return [0, '0'].includes(order.status)
+                && Number(order.is_redem) === 1
+                && Number(order.is_manual_redeem) === 1
+        },
+        canApplyRedeem(order) {
+            return this.hasManualRedeem(order) && [0, '0', 3, '3'].includes(order.redeem_status)
+        },
+        confirmRedeem(order) {
+            if (this.redeemingOrderId !== null || !this.canApplyRedeem(order)) return
+            this.$dialog.confirm({
+                title: this.$t('确认赎回'),
+                message: this.$t('确定申请赎回该订单吗？审核通过后将退回本金。'),
+                confirmButtonText: this.$t('确认'),
+                cancelButtonText: this.$t('取消'),
+                showCancelButton: true,
+            }).then(() => this.applyRedeem(order)).catch(() => {})
+        },
+        async applyRedeem(order) {
+            if (this.redeemingOrderId !== null || !this.canApplyRedeem(order)) return
+            this.redeemingOrderId = order.id
+            Toast.loading({
+                message: this.$t('提交中'),
+                forbidClick: true,
+                loadingType: 'spinner',
+                duration: 0,
+            })
+            try {
+                const res = await this.$http.post('/api/orders/redeem', {
+                    order_id: order.id,
+                })
+                if (res.code == 200) {
+                    // 申请成功只代表进入待审核状态，本金由后台审核通过后退回。
+                    order.redeem_status = 1
+                    order.redeem_reason = ''
+                    order.redeem_apply_at = null
+                    order.redeem_audit_at = null
+                    this.$messageTip.success(this.$t('赎回申请已提交'))
+                    this.mescroll && this.mescroll.resetUpScroll()
+                }
+            } catch (error) {
+                console.log('理财订单赎回申请失败', error)
+                // HTTP 错误由全局拦截器提示；无响应的网络异常在页面补充提示。
+                if (!error || !error.status) {
+                    this.$messageTip.error(this.$t('赎回申请失败，请重试'))
+                }
+            } finally {
+                this.redeemingOrderId = null
+                Toast.clear()
             }
         },
     },
@@ -282,7 +375,7 @@ export default {
                 .deposit-order-card {
                     position: relative;
                     width: 690px;
-                    height: 364px;
+                    min-height: 364px;
                     border: 2px solid rgba(255, 255, 255, 0.10);
                     border-radius: 20px;
                     background: rgba(255, 255, 255, 0.10);
@@ -378,6 +471,73 @@ export default {
                                 text-overflow: ellipsis;
                                 white-space: nowrap;
                             }
+                        }
+                    }
+
+                    .deposit-order-redeem {
+                        margin: 362px 28px 28px;
+                        padding-top: 22px;
+                        border-top: 1px solid rgba(255, 255, 255, 0.10);
+
+                        .deposit-order-redeem-heading {
+                            flex-wrap: wrap;
+                            gap: 16px;
+
+                            .deposit-order-redeem-status {
+                                color: #B7FF2D;
+                                font-size: 26px;
+                                line-height: 38px;
+
+                                &.rejected {
+                                    color: #FF8585;
+                                }
+                            }
+
+                            .deposit-order-redeem-rejection {
+                                display: flex;
+                                width: 100%;
+                                align-items: baseline;
+                                gap: 16px;
+
+                                .deposit-order-redeem-status {
+                                    flex-shrink: 0;
+                                }
+
+                                .deposit-order-redeem-reason {
+                                    flex: 1;
+                                    min-width: 0;
+                                    margin: 0;
+                                    color: #FF8585;
+                                    font-size: 24px;
+                                    line-height: 36px;
+                                    white-space: pre-wrap;
+                                    overflow-wrap: anywhere;
+                                }
+                            }
+
+                            .deposit-order-redeem-button {
+                                width: 100%;
+                                min-height: 64px;
+                                padding: 12px 28px;
+                                border-radius: 999px;
+                                background: #B7FF2D;
+                                color: #01050C;
+                                font-size: 26px;
+                                line-height: 38px;
+
+                                &:disabled {
+                                    opacity: 0.5;
+                                    cursor: not-allowed;
+                                }
+                            }
+                        }
+
+                        .deposit-order-redeem-time {
+                            margin-top: 12px;
+                            color: rgba(255, 255, 255, 0.50);
+                            font-size: 22px;
+                            line-height: 34px;
+                            overflow-wrap: anywhere;
                         }
                     }
                 }
