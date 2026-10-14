@@ -497,5 +497,7 @@
     "审核时间": "Review time",
     "确定申请赎回该订单吗？审核通过后将退回本金。": "Apply to redeem this order? Your principal will be returned after approval.",
     "赎回申请已提交": "Redemption request submitted",
-    "赎回申请失败，请重试": "Redemption request failed. Please try again"
+    "赎回申请失败，请重试": "Redemption request failed. Please try again",
+    "今日量化收益": "Today’s quantitative trading income",
+    "今日社区收益": "Today’s community income"
 }

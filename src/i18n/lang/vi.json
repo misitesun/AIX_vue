@@ -497,5 +497,7 @@
     "审核时间": "Thời gian xét duyệt",
     "确定申请赎回该订单吗？审核通过后将退回本金。": "Bạn có muốn đăng ký hoàn vốn cho đơn này không? Vốn gốc sẽ được hoàn trả sau khi được duyệt.",
     "赎回申请已提交": "Đã gửi yêu cầu hoàn vốn",
-    "赎回申请失败，请重试": "Gửi yêu cầu hoàn vốn thất bại. Vui lòng thử lại"
+    "赎回申请失败，请重试": "Gửi yêu cầu hoàn vốn thất bại. Vui lòng thử lại",
+    "今日量化收益": "Thu nhập giao dịch định lượng hôm nay",
+    "今日社区收益": "Thu nhập cộng đồng hôm nay"
 }

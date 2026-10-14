@@ -31,6 +31,24 @@
                 </div>
             </section>
 
+            <!-- 今日收益：与总资产共用余额接口，卡片样式沿用首页分红统计。 -->
+            <section class="asset-income-statistics df-aic-jusb">
+                <div class="asset-income-item">
+                    <div class="asset-income-label">{{ $t('今日量化收益') }}</div>
+                    <div v-if="showBalance" class="asset-income-value">
+                        <span>{{ splitDecimal(todayJtIncome).integer }}</span><span class="asset-income-decimal">{{ splitDecimal(todayJtIncome).decimal }}</span>
+                    </div>
+                    <div v-else class="asset-income-value">****</div>
+                </div>
+                <div class="asset-income-item">
+                    <div class="asset-income-label">{{ $t('今日社区收益') }}</div>
+                    <div v-if="showBalance" class="asset-income-value">
+                        <span>{{ splitDecimal(todayDtIncome).integer }}</span><span class="asset-income-decimal">{{ splitDecimal(todayDtIncome).decimal }}</span>
+                    </div>
+                    <div v-else class="asset-income-value">****</div>
+                </div>
+            </section>
+
             <!-- 模块二：资产操作入口 -->
             <section class="asset-actions">
                 <button type="button" class="asset-action-card" @click="openRecharge">
@@ -121,6 +139,8 @@ export default {
             assetVisibilityEyeVisible,
             assetVisibilityEyeHidden,
             totalAssetValue: this.$t('无数据'),
+            todayJtIncome: this.$t('无数据'),
+            todayDtIncome: this.$t('无数据'),
             // AXE、AIX 的单价来自余额接口；右下金额按“余额 × 单价”计算。
             assets: [
                 {
@@ -191,6 +211,8 @@ export default {
                 const res = await this.$http.get('/api/users/my/balance')
                 if (res.code == 200 && res.data) {
                     this.totalAssetValue = this.getDisplayValue(res.data.total_balance)
+                    this.todayJtIncome = this.getDisplayValue(res.data.today_jt_income)
+                    this.todayDtIncome = this.getDisplayValue(res.data.today_dt_income)
                     this.assets = this.assets.map(item => {
                         const balance = res.data[item.balanceField]
                         const price = item.priceField ? res.data[item.priceField] : ''
@@ -272,7 +294,7 @@ export default {
         },
         // 仅拆分整数与小数以匹配设计稿字号，不改变接口原始值。
         splitDecimal(value) {
-            const parts = String(value || '').split('.')
+            const parts = String(value === undefined || value === null ? '' : value).split('.')
             return {
                 integer: parts[0],
                 decimal: parts.length > 1 ? `.${parts.slice(1).join('.')}` : '',
@@ -375,6 +397,44 @@ export default {
                     color: rgba(255, 255, 255, 0.60);
                     font-size: 28px;
                     letter-spacing: 0;
+                }
+            }
+        }
+    }
+
+    .asset-income-statistics {
+        width: 100%;
+        min-height: 140px;
+        margin-top: 48px;
+        padding: 25px 30px;
+        border: 2px solid rgba(255, 255, 255, 0.20);
+        border-radius: 32px;
+        background: rgba(255, 255, 255, 0.10);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        gap: 24px;
+
+        .asset-income-item {
+            flex: 1 1 0;
+            min-width: 0;
+            text-align: center;
+
+            .asset-income-label {
+                color: rgba(255, 255, 255, 0.50);
+                font-size: 24px;
+                line-height: 34px;
+            }
+
+            .asset-income-value {
+                margin-top: 10px;
+                font-family: "Poppins", "Avenir Next", "Helvetica Neue", sans-serif;
+                font-size: 30px;
+                font-weight: 500;
+                line-height: 45px;
+                overflow-wrap: anywhere;
+
+                .asset-income-decimal {
+                    font-size: 24px;
                 }
             }
         }
