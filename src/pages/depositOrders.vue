@@ -81,6 +81,11 @@
                                 </div>
                             </div>
 
+                            <div v-if="Number(order.gift_amount) > 0" class="deposit-order-gift">
+                                <span>{{ $t('赠送本金') }}</span>
+                                <span class="deposit-order-gift-value">{{ order.gift_amount }} USDT</span>
+                            </div>
+
                             <div v-if="hasManualRedeem(order)" class="deposit-order-redeem">
                                 <div class="deposit-order-redeem-heading df-aic-jusb">
                                     <span v-if="order.redeem_status == 1" class="deposit-order-redeem-status">
@@ -175,6 +180,7 @@ export default {
                     createdAt: order.created_at,
                     totalIncome: order.release_amount,
                     principal: order.amount,
+                    gift_amount: order.gift_amount,
                     todayIncome: order.today_amount,
                     elapsedDays: order.release_count,
                     cycleDays: order.output_count,
@@ -471,6 +477,29 @@ export default {
                                 text-overflow: ellipsis;
                                 white-space: nowrap;
                             }
+                        }
+                    }
+
+                    .deposit-order-gift {
+                        display: flex;
+                        flex-wrap: wrap;
+                        margin: 350px 28px 0;
+                        padding-bottom: 28px;
+                        align-items: baseline;
+                        justify-content: space-between;
+                        gap: 8px 16px;
+                        color: rgba(255, 255, 255, 0.50);
+                        font-size: 24px;
+                        line-height: 36px;
+
+                        .deposit-order-gift-value {
+                            max-width: 100%;
+                            color: #4C91FF;
+                            overflow-wrap: anywhere;
+                        }
+
+                        & + .deposit-order-redeem {
+                            margin-top: 0;
                         }
                     }
 

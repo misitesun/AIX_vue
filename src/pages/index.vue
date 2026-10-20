@@ -123,6 +123,11 @@
                     <div class="plan-card-cycle">{{ $t('周期') }}·{{ plan.cycleDays }}{{ $t('天') }}</div>
                 </div>
 
+                <div v-if="Number(plan.gift_rate) > 0" class="plan-card-gift">
+                    <span>{{ $t('赠送本金比例') }}</span>
+                    <span class="plan-card-gift-value">{{ plan.gift_rate }}%</span>
+                </div>
+
                 <div class="plan-card-amount-label">{{ $t('授权金额') }}</div>
                 <div class="plan-card-input df-aic-jusb">
                     <input
@@ -1130,6 +1135,21 @@ export default {
                     line-height: 34px;
                     text-align: center;
                     white-space: nowrap;
+                }
+            }
+
+            .plan-card-gift {
+                display: flex;
+                flex-wrap: wrap;
+                margin-top: 16px;
+                gap: 8px 16px;
+                color: rgba(255, 255, 255, 0.50);
+                font-size: 24px;
+                line-height: 36px;
+
+                .plan-card-gift-value {
+                    color: #4C91FF;
+                    overflow-wrap: anywhere;
                 }
             }
 
